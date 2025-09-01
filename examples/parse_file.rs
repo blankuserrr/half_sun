@@ -1,5 +1,9 @@
 use anyhow::Result;
-use half_sun::{self, visitors::Visitor, ast::{Statement, Expression}};
+use half_sun::{
+    self,
+    ast::{Expression, Statement},
+    visitors::Visitor,
+};
 use std::fs;
 
 fn main() -> Result<()> {
@@ -14,7 +18,7 @@ fn main() -> Result<()> {
     match half_sun::parse(&code) {
         Ok(ast) => {
             println!("✓ {} parsed successfully", filename);
-            
+
             // Demonstrate actual AST usage
             let root_block = ast.root_block();
             let statement_count = root_block.statements.len();

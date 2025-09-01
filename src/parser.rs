@@ -51,7 +51,9 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
     fn skip_trivia(&mut self) {
         while let Some(Ok(token)) = self.peek() {
             match token.token_type {
-                TokenType::Whitespace(_) | TokenType::LineComment(_) | TokenType::BlockComment(_) => {
+                TokenType::Whitespace(_)
+                | TokenType::LineComment(_)
+                | TokenType::BlockComment(_) => {
                     self.advance();
                 }
                 _ => break,
@@ -77,7 +79,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                 // If we couldn't parse a statement and we're not at a terminator,
                 // this is a syntax error
                 if !self.is_block_terminator() && !self.is_at_end() {
-                    let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                    let found = self
+                        .peek()
+                        .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                        .unwrap_or_else(|| "EOF".to_string());
                     let span = self.current_span();
                     self.errors.push(ParseError::UnexpectedToken {
                         expected: "statement".to_string(),
@@ -127,7 +132,11 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
                     // Allow trivia between 'function' and the identifier
                     self.skip_trivia();
-                    let name = if let Some(Ok(Token { token_type: TokenType::Identifier(name), .. })) = self.peek() {
+                    let name = if let Some(Ok(Token {
+                        token_type: TokenType::Identifier(name),
+                        ..
+                    })) = self.peek()
+                    {
                         let name_val = *name;
                         self.advance(); // consume identifier
                         name_val
@@ -135,7 +144,7 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                         let span = self.current_span();
                         self.errors.push(ParseError::InvalidSyntax {
                             message: "Expected function name after 'local function'".to_string(),
-                            span
+                            span,
                         });
                         return None;
                     };
@@ -159,7 +168,11 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                         self.skip_trivia();
 
                         // Name
-                        let (name, name_span_start) = if let Some(Ok(Token { token_type: TokenType::Identifier(name_val), .. })) = self.peek() {
+                        let (name, name_span_start) = if let Some(Ok(Token {
+                            token_type: TokenType::Identifier(name_val),
+                            ..
+                        })) = self.peek()
+                        {
                             let name_val = *name_val;
                             let t = self.advance();
                             (name_val, t.span.start)
@@ -167,7 +180,7 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                             let span = self.current_span();
                             self.errors.push(ParseError::InvalidSyntax {
                                 message: "Expected identifier".to_string(),
-                                span
+                                span,
                             });
                             return None;
                         };
@@ -185,13 +198,19 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                                 }
                                 _ => {
                                     let span = self.current_span();
-                                    self.errors.push(ParseError::InvalidSyntax { message: "Expected attribute name after '<'".to_string(), span });
+                                    self.errors.push(ParseError::InvalidSyntax {
+                                        message: "Expected attribute name after '<'".to_string(),
+                                        span,
+                                    });
                                     return None;
                                 }
                             }
                             if !self.check(&TokenType::Gt) {
                                 let span = self.current_span();
-                                self.errors.push(ParseError::InvalidSyntax { message: "Expected '>' after attribute name".to_string(), span });
+                                self.errors.push(ParseError::InvalidSyntax {
+                                    message: "Expected '>' after attribute name".to_string(),
+                                    span,
+                                });
                                 return None;
                             }
                             name_span_end = self.advance().span.end; // consume '>' and extend span
@@ -267,7 +286,11 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                 // goto Name
                 let start_span = self.advance().span; // consume 'goto'
                 self.skip_trivia();
-                let name = if let Some(Ok(Token { token_type: TokenType::Identifier(name), .. })) = self.peek() {
+                let name = if let Some(Ok(Token {
+                    token_type: TokenType::Identifier(name),
+                    ..
+                })) = self.peek()
+                {
                     let ident = *name;
                     self.advance(); // consume identifier
                     ident
@@ -289,7 +312,11 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                 // ::label::
                 let start_span = self.advance().span; // consume '::'
 
-                let name = if let Some(Ok(Token { token_type: TokenType::Identifier(name), .. })) = self.peek() {
+                let name = if let Some(Ok(Token {
+                    token_type: TokenType::Identifier(name),
+                    ..
+                })) = self.peek()
+                {
                     let ident = *name;
                     self.advance(); // consume identifier
                     ident
@@ -328,7 +355,8 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
                 if let Some(expr) = self.try_parse_prefix_expression() {
                     // This is tricky without backtracking. We can peek ahead.
-                    let is_assignment = self.check(&TokenType::Assign) || self.check(&TokenType::Comma);
+                    let is_assignment =
+                        self.check(&TokenType::Assign) || self.check(&TokenType::Comma);
 
                     if is_assignment {
                         // It's an assignment
@@ -337,7 +365,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                         if let Expression::Variable { var, .. } = expr {
                             variables.push(var);
                         } else {
-                            self.errors.push(ParseError::InvalidSyntax { message: "Invalid left-hand side of assignment".to_string(), span: expr.span() });
+                            self.errors.push(ParseError::InvalidSyntax {
+                                message: "Invalid left-hand side of assignment".to_string(),
+                                span: expr.span(),
+                            });
                             return None;
                         }
 
@@ -348,7 +379,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                                 if let Expression::Variable { var, .. } = next_expr {
                                     variables.push(var);
                                 } else {
-                                    self.errors.push(ParseError::InvalidSyntax { message: "Invalid left-hand side of assignment".to_string(), span: next_expr.span() });
+                                    self.errors.push(ParseError::InvalidSyntax {
+                                        message: "Invalid left-hand side of assignment".to_string(),
+                                        span: next_expr.span(),
+                                    });
                                     return None;
                                 }
                             } else {
@@ -367,12 +401,18 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                     // Check if it's a function call statement
                     if let Expression::FunctionCall { .. } = expr {
                         let span = expr.span();
-                        return Some(Statement::Expression { expression: self.builder.alloc(expr), span });
+                        return Some(Statement::Expression {
+                            expression: self.builder.alloc(expr),
+                            span,
+                        });
                     }
                 }
 
                 // If it's neither, this is a syntax error
-                let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                let found = self
+                    .peek()
+                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                    .unwrap_or_else(|| "EOF".to_string());
                 let span = self.current_span();
                 self.errors.push(ParseError::UnexpectedToken {
                     expected: "assignment or function call".to_string(),
@@ -404,14 +444,21 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
     fn parse_function_name(&mut self) -> FunctionName<'arena> {
         let start_span = self.current_span();
 
-        let base = if let Some(Ok(Token { token_type: TokenType::Identifier(name), .. })) = self.peek() {
+        let base = if let Some(Ok(Token {
+            token_type: TokenType::Identifier(name),
+            ..
+        })) = self.peek()
+        {
             *name
         } else {
-            let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+            let found = self
+                .peek()
+                .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                .unwrap_or_else(|| "EOF".to_string());
             self.errors.push(ParseError::UnexpectedToken {
                 expected: "identifier".to_string(),
                 found,
-                span: start_span
+                span: start_span,
             });
             return FunctionName {
                 base: self.builder.alloc_str(""),
@@ -425,12 +472,19 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
         let mut fields = Vec::new();
         while self.check(&TokenType::Dot) {
             self.advance(); // consume '.'
-            if let Some(Ok(Token { token_type: TokenType::Identifier(field), .. })) = self.peek() {
+            if let Some(Ok(Token {
+                token_type: TokenType::Identifier(field),
+                ..
+            })) = self.peek()
+            {
                 fields.push(*field);
                 self.advance();
             } else {
                 let span = self.current_span();
-                self.errors.push(ParseError::InvalidSyntax { message: "Expected field name after '.'".to_string(), span });
+                self.errors.push(ParseError::InvalidSyntax {
+                    message: "Expected field name after '.'".to_string(),
+                    span,
+                });
                 return FunctionName {
                     base: self.builder.alloc_str(""),
                     fields: self.builder.alloc_slice(&[]),
@@ -440,16 +494,22 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             }
         }
 
-
         let method = if self.check(&TokenType::Colon) {
             self.advance(); // consume ':'
-            if let Some(Ok(Token { token_type: TokenType::Identifier(method_name), .. })) = self.peek() {
+            if let Some(Ok(Token {
+                token_type: TokenType::Identifier(method_name),
+                ..
+            })) = self.peek()
+            {
                 let method_name = *method_name;
                 self.advance(); // consume method name
                 Some(self.builder.alloc_str(method_name))
             } else {
                 let span = self.current_span();
-                self.errors.push(ParseError::InvalidSyntax { message: "Expected method name after ':'".to_string(), span });
+                self.errors.push(ParseError::InvalidSyntax {
+                    message: "Expected method name after ':'".to_string(),
+                    span,
+                });
                 Some(self.builder.alloc_str(""))
             }
         } else {
@@ -471,7 +531,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
         let start_span = self.current_span();
 
         if !self.check(&TokenType::LeftParen) {
-            let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+            let found = self
+                .peek()
+                .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                .unwrap_or_else(|| "EOF".to_string());
             let span = self.current_span();
             self.errors.push(ParseError::UnexpectedToken {
                 expected: "'('".to_string(),
@@ -498,7 +561,11 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
         if !self.check(&TokenType::RightParen) {
             loop {
                 self.skip_trivia(); // Handle trivia before parameter
-                if let Some(Ok(Token { token_type: TokenType::Identifier(name), .. })) = self.peek() {
+                if let Some(Ok(Token {
+                    token_type: TokenType::Identifier(name),
+                    ..
+                })) = self.peek()
+                {
                     parameters.push(*name);
                     self.advance();
                 } else if self.check(&TokenType::Ellipsis) {
@@ -509,7 +576,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                     // An error here doesn't mean we should stop parsing the function.
                     // We'll report it and then break out of the parameter loop.
                     let span = self.current_span();
-                    self.errors.push(ParseError::InvalidSyntax { message: "Expected parameter name or '...'".to_string(), span });
+                    self.errors.push(ParseError::InvalidSyntax {
+                        message: "Expected parameter name or '...'".to_string(),
+                        span,
+                    });
                     break;
                 }
 
@@ -523,7 +593,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
         if !self.check(&TokenType::RightParen) {
             let span = self.current_span();
-            self.errors.push(ParseError::InvalidSyntax { message: "Expected ')' after function parameters".to_string(), span });
+            self.errors.push(ParseError::InvalidSyntax {
+                message: "Expected ')' after function parameters".to_string(),
+                span,
+            });
         } else {
             self.advance(); // consume ')'
         }
@@ -532,7 +605,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
         if !self.check(&TokenType::End) {
             let span = self.current_span();
-            self.errors.push(ParseError::InvalidSyntax { message: "Expected 'end' after function body".to_string(), span });
+            self.errors.push(ParseError::InvalidSyntax {
+                message: "Expected 'end' after function body".to_string(),
+                span,
+            });
         } else {
             self.advance(); // consume 'end'
         }
@@ -552,11 +628,18 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
         let start_span = self.advance().span; // consume 'for'
 
         self.skip_trivia(); // Skip whitespace after 'for'
-        let var_name = if let Some(Ok(Token { token_type: TokenType::Identifier(name), .. })) = self.peek() {
+        let var_name = if let Some(Ok(Token {
+            token_type: TokenType::Identifier(name),
+            ..
+        })) = self.peek()
+        {
             *name
         } else {
             let span = self.current_span();
-            self.errors.push(ParseError::InvalidSyntax { message: "Expected identifier after 'for'".to_string(), span });
+            self.errors.push(ParseError::InvalidSyntax {
+                message: "Expected identifier after 'for'".to_string(),
+                span,
+            });
             return None;
         };
         self.advance(); // consume identifier
@@ -568,7 +651,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                 expr
             } else {
                 let span = self.current_span();
-                let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                let found = self
+                    .peek()
+                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                    .unwrap_or_else(|| "EOF".to_string());
                 self.errors.push(ParseError::UnexpectedToken {
                     expected: "expression".to_string(),
                     found,
@@ -579,7 +665,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
             if !self.check(&TokenType::Comma) {
                 let span = self.current_span();
-                let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                let found = self
+                    .peek()
+                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                    .unwrap_or_else(|| "EOF".to_string());
                 self.errors.push(ParseError::UnexpectedToken {
                     expected: "','".to_string(),
                     found,
@@ -592,7 +681,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                 expr
             } else {
                 let span = self.current_span();
-                let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                let found = self
+                    .peek()
+                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                    .unwrap_or_else(|| "EOF".to_string());
                 self.errors.push(ParseError::UnexpectedToken {
                     expected: "expression".to_string(),
                     found,
@@ -607,7 +699,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                     Some(expr)
                 } else {
                     let span = self.current_span();
-                    let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                    let found = self
+                        .peek()
+                        .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                        .unwrap_or_else(|| "EOF".to_string());
                     self.errors.push(ParseError::UnexpectedToken {
                         expected: "expression".to_string(),
                         found,
@@ -621,7 +716,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
             if !self.check(&TokenType::Do) {
                 let span = self.current_span();
-                let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                let found = self
+                    .peek()
+                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                    .unwrap_or_else(|| "EOF".to_string());
                 self.errors.push(ParseError::UnexpectedToken {
                     expected: "'do'".to_string(),
                     found,
@@ -635,7 +733,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
             if !self.check(&TokenType::End) {
                 let span = self.current_span();
-                let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                let found = self
+                    .peek()
+                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                    .unwrap_or_else(|| "EOF".to_string());
                 self.errors.push(ParseError::UnexpectedToken {
                     expected: "'end'".to_string(),
                     found,
@@ -661,19 +762,29 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             while self.check(&TokenType::Comma) {
                 self.advance(); // consume comma
                 self.skip_trivia();
-                if let Some(Ok(Token { token_type: TokenType::Identifier(name), .. })) = self.peek() {
+                if let Some(Ok(Token {
+                    token_type: TokenType::Identifier(name),
+                    ..
+                })) = self.peek()
+                {
                     namelist.push(*name);
                     self.advance();
                 } else {
                     let span = self.current_span();
-                    self.errors.push(ParseError::InvalidSyntax { message: "Expected identifier in name list".to_string(), span });
+                    self.errors.push(ParseError::InvalidSyntax {
+                        message: "Expected identifier in name list".to_string(),
+                        span,
+                    });
                     return None;
                 }
             }
 
             if !self.check(&TokenType::In) {
                 let span = self.current_span();
-                let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                let found = self
+                    .peek()
+                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                    .unwrap_or_else(|| "EOF".to_string());
                 self.errors.push(ParseError::UnexpectedToken {
                     expected: "'in'".to_string(),
                     found,
@@ -687,7 +798,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
             if !self.check(&TokenType::Do) {
                 let span = self.current_span();
-                let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                let found = self
+                    .peek()
+                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                    .unwrap_or_else(|| "EOF".to_string());
                 self.errors.push(ParseError::UnexpectedToken {
                     expected: "'do'".to_string(),
                     found,
@@ -701,7 +815,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
             if !self.check(&TokenType::End) {
                 let span = self.current_span();
-                let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                let found = self
+                    .peek()
+                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                    .unwrap_or_else(|| "EOF".to_string());
                 self.errors.push(ParseError::UnexpectedToken {
                     expected: "'end'".to_string(),
                     found,
@@ -730,7 +847,7 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
         if !self.check(&TokenType::End) {
             let span = self.current_span();
-             self.errors.push(ParseError::UnexpectedToken {
+            self.errors.push(ParseError::UnexpectedToken {
                 expected: "'end'".to_string(),
                 found: "".to_string(),
                 span,
@@ -740,10 +857,7 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
         let span = Span::new(start_span.start, end_span.end);
 
-        Some(Statement::Do {
-            block,
-            span,
-        })
+        Some(Statement::Do { block, span })
     }
 
     /// Parse a repeat-until statement
@@ -754,7 +868,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
         if !self.check(&TokenType::Until) {
             let span = self.current_span();
-            let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+            let found = self
+                .peek()
+                .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                .unwrap_or_else(|| "EOF".to_string());
             self.errors.push(ParseError::UnexpectedToken {
                 expected: "'until'".to_string(),
                 found,
@@ -767,7 +884,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             expr
         } else {
             let span = self.current_span();
-            let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+            let found = self
+                .peek()
+                .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                .unwrap_or_else(|| "EOF".to_string());
             self.errors.push(ParseError::UnexpectedToken {
                 expected: "condition expression".to_string(),
                 found,
@@ -793,7 +913,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             expr
         } else {
             let span = self.current_span();
-            let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+            let found = self
+                .peek()
+                .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                .unwrap_or_else(|| "EOF".to_string());
             self.errors.push(ParseError::UnexpectedToken {
                 expected: "condition expression".to_string(),
                 found,
@@ -804,7 +927,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
         if !self.check(&TokenType::Do) {
             let span = self.current_span();
-            let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+            let found = self
+                .peek()
+                .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                .unwrap_or_else(|| "EOF".to_string());
             self.errors.push(ParseError::UnexpectedToken {
                 expected: "'do'".to_string(),
                 found,
@@ -817,8 +943,8 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
         let body = self.parse_block();
 
         if !self.check(&TokenType::End) {
-             let span = self.current_span();
-             self.errors.push(ParseError::UnexpectedToken {
+            let span = self.current_span();
+            self.errors.push(ParseError::UnexpectedToken {
                 expected: "'end'".to_string(),
                 found: "".to_string(),
                 span,
@@ -842,7 +968,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             expr
         } else {
             let span = self.current_span();
-            let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+            let found = self
+                .peek()
+                .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                .unwrap_or_else(|| "EOF".to_string());
             self.errors.push(ParseError::UnexpectedToken {
                 expected: "condition expression".to_string(),
                 found,
@@ -853,7 +982,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
         if !self.check(&TokenType::Then) {
             let span = self.current_span();
-            let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+            let found = self
+                .peek()
+                .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                .unwrap_or_else(|| "EOF".to_string());
             self.errors.push(ParseError::UnexpectedToken {
                 expected: "'then'".to_string(),
                 found,
@@ -871,8 +1003,11 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             let elseif_condition = if let Some(expr) = self.try_parse_expression() {
                 expr
             } else {
-                 let span = self.current_span();
-                let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                let span = self.current_span();
+                let found = self
+                    .peek()
+                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                    .unwrap_or_else(|| "EOF".to_string());
                 self.errors.push(ParseError::UnexpectedToken {
                     expected: "condition expression".to_string(),
                     found,
@@ -883,7 +1018,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
             if !self.check(&TokenType::Then) {
                 let span = self.current_span();
-                let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                let found = self
+                    .peek()
+                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                    .unwrap_or_else(|| "EOF".to_string());
                 self.errors.push(ParseError::UnexpectedToken {
                     expected: "'then'".to_string(),
                     found,
@@ -932,20 +1070,28 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
     }
 
     /// Parse an assignment statement
-    fn parse_assignment_statement(&mut self, variables: Vec<&'arena Variable<'arena>>) -> Option<Statement<'arena>> {
+    fn parse_assignment_statement(
+        &mut self,
+        variables: Vec<&'arena Variable<'arena>>,
+    ) -> Option<Statement<'arena>> {
         if !self.check(&TokenType::Assign) {
             let span = self.current_span();
-            self.errors.push(ParseError::InvalidSyntax { message: "Expected '=' for assignment".to_string(), span });
+            self.errors.push(ParseError::InvalidSyntax {
+                message: "Expected '=' for assignment".to_string(),
+                span,
+            });
             return None;
         }
         self.advance(); // consume '='
 
         let expressions = self.parse_required_expression_list();
 
-        let start_span = variables.first().map(|v| v.span()).unwrap_or_else(|| self.current_span());
+        let start_span = variables
+            .first()
+            .map(|v| v.span())
+            .unwrap_or_else(|| self.current_span());
         let end_span = self.previous_span;
         let span = Span::new(start_span.start, end_span.end);
-
 
         Some(Statement::Assignment {
             variables: self.builder.alloc_slice(&variables),
@@ -956,18 +1102,20 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
     /// Try to parse a prefix expression, which can be a variable or a function call
     fn try_parse_prefix_expression(&mut self) -> Option<Expression<'arena>> {
-        self.skip_trivia();  // Skip trivia before parsing
+        self.skip_trivia(); // Skip trivia before parsing
         let token_res = self.peek().map(|r| r.as_ref());
 
         let mut expr = if let Some(Ok(token)) = token_res {
             match &token.token_type {
-                TokenType::Identifier(_) |
-                TokenType::LeftParen => {
+                TokenType::Identifier(_) | TokenType::LeftParen => {
                     let token = self.advance();
                     let span = token.span;
                     match token.token_type {
                         TokenType::Identifier(name) => {
-                            let var = self.builder.alloc(Variable::Identifier { name: self.builder.alloc_str(name), span });
+                            let var = self.builder.alloc(Variable::Identifier {
+                                name: self.builder.alloc_str(name),
+                                span,
+                            });
                             Expression::Variable { var, span }
                         }
                         TokenType::LeftParen => {
@@ -975,7 +1123,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                                 expr
                             } else {
                                 let span = self.current_span();
-                                let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                                let found = self
+                                    .peek()
+                                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                                    .unwrap_or_else(|| "EOF".to_string());
                                 self.errors.push(ParseError::UnexpectedToken {
                                     expected: "expression".to_string(),
                                     found,
@@ -985,7 +1136,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                             };
                             if !self.check(&TokenType::RightParen) {
                                 let span = self.current_span();
-                                let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                                let found = self
+                                    .peek()
+                                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                                    .unwrap_or_else(|| "EOF".to_string());
                                 self.errors.push(ParseError::UnexpectedToken {
                                     expected: "')'".to_string(),
                                     found,
@@ -994,12 +1148,18 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                                 return None;
                             }
                             let end_span = self.advance().span;
-                            Expression::Parenthesized { expression: self.builder.alloc(inner_expr), span: Span::new(span.start, end_span.end) }
+                            Expression::Parenthesized {
+                                expression: self.builder.alloc(inner_expr),
+                                span: Span::new(span.start, end_span.end),
+                            }
                         }
                         _ => {
                             self.errors.push(ParseError::InvalidSyntax {
-                                message: format!("Unexpected token in prefix expression: {:?}", token.token_type),
-                                span: token.span
+                                message: format!(
+                                    "Unexpected token in prefix expression: {:?}",
+                                    token.token_type
+                                ),
+                                span: token.span,
                             });
                             return None;
                         }
@@ -1032,7 +1192,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                                 expr
                             } else {
                                 let span = self.current_span();
-                                let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                                let found = self
+                                    .peek()
+                                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                                    .unwrap_or_else(|| "EOF".to_string());
                                 self.errors.push(ParseError::UnexpectedToken {
                                     expected: "index expression".to_string(),
                                     found,
@@ -1040,7 +1203,14 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                                 });
                                 return None;
                             };
-                            if !self.check(&TokenType::RightBracket) { let span = self.current_span(); self.errors.push(ParseError::InvalidSyntax { message: "Expected ']' after index".to_string(), span }); return None; }
+                            if !self.check(&TokenType::RightBracket) {
+                                let span = self.current_span();
+                                self.errors.push(ParseError::InvalidSyntax {
+                                    message: "Expected ']' after index".to_string(),
+                                    span,
+                                });
+                                return None;
+                            }
                             let end_token = self.advance(); // consume ']'
                             let span = Span::new(expr.span().start, end_token.span.end);
                             let table = self.builder.alloc(expr);
@@ -1050,16 +1220,32 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                         }
                         TokenType::Dot => {
                             self.advance(); // consume '.'
-                            if let Some(Ok(Token { token_type: TokenType::Identifier(_), .. })) = self.peek() {
+                            if let Some(Ok(Token {
+                                token_type: TokenType::Identifier(_),
+                                ..
+                            })) = self.peek()
+                            {
                                 let field_token = self.advance();
-                                let field = if let TokenType::Identifier(f) = field_token.token_type { f } else { "" }; // Should be unreachable
+                                let field = if let TokenType::Identifier(f) = field_token.token_type
+                                {
+                                    f
+                                } else {
+                                    ""
+                                }; // Should be unreachable
                                 let span = Span::new(expr.span().start, field_token.span.end);
                                 let table = self.builder.alloc(expr);
-                                let var = self.builder.alloc(Variable::Field { table, field: self.builder.alloc_str(field), span });
+                                let var = self.builder.alloc(Variable::Field {
+                                    table,
+                                    field: self.builder.alloc_str(field),
+                                    span,
+                                });
                                 expr = Expression::Variable { var, span };
                             } else {
                                 let span = self.current_span();
-                                self.errors.push(ParseError::InvalidSyntax { message: "Expected identifier after '.'".to_string(), span });
+                                self.errors.push(ParseError::InvalidSyntax {
+                                    message: "Expected identifier after '.'".to_string(),
+                                    span,
+                                });
                                 return None;
                             }
                         }
@@ -1069,27 +1255,49 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                             let end_span = self.previous_span;
                             let span = Span::new(expr.span().start, end_span.end);
                             let func = self.builder.alloc(expr);
-                            expr = Expression::FunctionCall { function: func, method: None, arguments: args, span };
+                            expr = Expression::FunctionCall {
+                                function: func,
+                                method: None,
+                                arguments: args,
+                                span,
+                            };
                         }
                         TokenType::Colon => {
                             self.advance(); // consume ':'
-                            if let Some(Ok(Token { token_type: TokenType::Identifier(_), .. })) = self.peek() {
+                            if let Some(Ok(Token {
+                                token_type: TokenType::Identifier(_),
+                                ..
+                            })) = self.peek()
+                            {
                                 let method_token = self.advance();
-                                let method = if let TokenType::Identifier(m) = method_token.token_type { m } else { "" }; // Should be unreachable
+                                let method =
+                                    if let TokenType::Identifier(m) = method_token.token_type {
+                                        m
+                                    } else {
+                                        ""
+                                    }; // Should be unreachable
                                 let args = self.parse_args();
                                 let end_span = self.previous_span;
                                 let span = Span::new(expr.span().start, end_span.end);
                                 let func = self.builder.alloc(expr);
-                                expr = Expression::FunctionCall { function: func, method: Some(self.builder.alloc_str(method)), arguments: args, span };
+                                expr = Expression::FunctionCall {
+                                    function: func,
+                                    method: Some(self.builder.alloc_str(method)),
+                                    arguments: args,
+                                    span,
+                                };
                             } else {
                                 let span = self.current_span();
-                                self.errors.push(ParseError::InvalidSyntax { message: "Expected identifier after ':'".to_string(), span });
+                                self.errors.push(ParseError::InvalidSyntax {
+                                    message: "Expected identifier after ':'".to_string(),
+                                    span,
+                                });
                                 return None;
                             }
                         }
                         _ => break,
                     }
-                },
+                }
                 _ => break,
             }
         }
@@ -1106,38 +1314,45 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                 TokenType::Ellipsis => {
                     self.advance();
                     Some(Expression::Varargs { span })
-                },
+                }
                 TokenType::String(value) => {
                     let value_str = *value; // Extract the string slice before advance
                     self.advance();
-                    Some(Expression::String { value: self.builder.alloc_str(value_str), span })
-                },
+                    Some(Expression::String {
+                        value: self.builder.alloc_str(value_str),
+                        span,
+                    })
+                }
                 TokenType::Number(value) => {
                     let value_str = *value; // Extract the string slice before advance
                     self.advance();
-                    Some(Expression::Number { value: self.builder.alloc_str(value_str), span })
-                },
+                    Some(Expression::Number {
+                        value: self.builder.alloc_str(value_str),
+                        span,
+                    })
+                }
                 TokenType::Nil => {
                     self.advance();
                     Some(Expression::Nil { span })
-                },
+                }
                 TokenType::True => {
                     self.advance();
                     Some(Expression::Boolean { value: true, span })
-                },
+                }
                 TokenType::False => {
                     self.advance();
                     Some(Expression::Boolean { value: false, span })
-                },
-                TokenType::LeftBrace => {
-                    self.parse_table_constructor()
-                },
+                }
+                TokenType::LeftBrace => self.parse_table_constructor(),
                 TokenType::Function => {
                     self.advance();
                     // Anonymous function literal: function funcbody
                     let body = self.parse_function_body();
                     let span = Span::new(span.start, body.span.end);
-                    Some(Expression::Function { body: self.builder.alloc(body), span })
+                    Some(Expression::Function {
+                        body: self.builder.alloc(body),
+                        span,
+                    })
                 }
                 _ => None,
             }
@@ -1152,7 +1367,9 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
         let mut fields = Vec::new();
         if !self.check(&TokenType::RightBrace) {
             loop {
-                if self.check(&TokenType::RightBrace) { break; }
+                if self.check(&TokenType::RightBrace) {
+                    break;
+                }
                 if let Some(field) = self.parse_table_field() {
                     fields.push(field);
                 } else {
@@ -1161,7 +1378,9 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
                 if self.check(&TokenType::Comma) || self.check(&TokenType::Semicolon) {
                     self.advance(); // consume separator
-                    if self.check(&TokenType::RightBrace) { break; }
+                    if self.check(&TokenType::RightBrace) {
+                        break;
+                    }
                 } else {
                     break;
                 }
@@ -1170,7 +1389,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
         if !self.check(&TokenType::RightBrace) {
             let span = self.current_span();
-            self.errors.push(ParseError::InvalidSyntax { message: "Expected '}' to close table constructor".to_string(), span });
+            self.errors.push(ParseError::InvalidSyntax {
+                message: "Expected '}' to close table constructor".to_string(),
+                span,
+            });
             return None;
         }
         let end_span = self.advance().span; // consume '}'
@@ -1191,7 +1413,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                 expr
             } else {
                 let span = self.current_span();
-                let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                let found = self
+                    .peek()
+                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                    .unwrap_or_else(|| "EOF".to_string());
                 self.errors.push(ParseError::UnexpectedToken {
                     expected: "key expression".to_string(),
                     found,
@@ -1202,7 +1427,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
             if !self.check(&TokenType::RightBracket) {
                 let span = self.current_span();
-                self.errors.push(ParseError::InvalidSyntax { message: "Expected ']' after table key".to_string(), span });
+                self.errors.push(ParseError::InvalidSyntax {
+                    message: "Expected ']' after table key".to_string(),
+                    span,
+                });
                 return None;
             }
             self.advance(); // consume ']'
@@ -1213,7 +1441,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                     expr
                 } else {
                     let span = self.current_span();
-                    let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                    let found = self
+                        .peek()
+                        .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                        .unwrap_or_else(|| "EOF".to_string());
                     self.errors.push(ParseError::UnexpectedToken {
                         expected: "value expression".to_string(),
                         found,
@@ -1223,7 +1454,11 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                 };
 
                 let span = Span::new(key.span().start, value.span().end);
-                return Some(TableField::Index { key: self.builder.alloc(key), value: self.builder.alloc(value), span });
+                return Some(TableField::Index {
+                    key: self.builder.alloc(key),
+                    value: self.builder.alloc(value),
+                    span,
+                });
             } else {
                 // In Lua, a table field of the form `[expression]` must be followed by `=`.
                 let span = self.current_span();
@@ -1249,13 +1484,20 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
         if self.check(&TokenType::Assign) {
             // This looks like a `key = value` field.
             // The key must have been a simple identifier.
-            if let Expression::Variable { var: Variable::Identifier { name, .. }, span: key_span } = expr {
+            if let Expression::Variable {
+                var: Variable::Identifier { name, .. },
+                span: key_span,
+            } = expr
+            {
                 self.advance(); // consume '='
                 let value = if let Some(value_expr) = self.try_parse_expression() {
                     value_expr
                 } else {
                     let span = self.current_span();
-                    let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+                    let found = self
+                        .peek()
+                        .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                        .unwrap_or_else(|| "EOF".to_string());
                     self.errors.push(ParseError::UnexpectedToken {
                         expected: "value expression".to_string(),
                         found,
@@ -1264,23 +1506,34 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                     return None;
                 };
                 let span = Span::new(key_span.start, value.span().end);
-                return Some(TableField::Named { key: name, value: self.builder.alloc(value), span });
+                return Some(TableField::Named {
+                    key: name,
+                    value: self.builder.alloc(value),
+                    span,
+                });
             } else {
                 // The LHS of the `=` was not an identifier, which is a syntax error.
                 self.errors.push(ParseError::InvalidSyntax {
-                    message: "Invalid key in table field assignment; expected an identifier".to_string(),
+                    message: "Invalid key in table field assignment; expected an identifier"
+                        .to_string(),
                     span: expr.span(),
                 });
                 // Recovery: we'll treat the parsed expression as a list item
                 // and let the parser complain about the unexpected '=' later.
                 let span = expr.span();
-                return Some(TableField::List { value: self.builder.alloc(expr), span });
+                return Some(TableField::List {
+                    value: self.builder.alloc(expr),
+                    span,
+                });
             }
         }
 
         // It's a list-style field
         let span = expr.span();
-        Some(TableField::List { value: self.builder.alloc(expr), span })
+        Some(TableField::List {
+            value: self.builder.alloc(expr),
+            span,
+        })
     }
 
     fn parse_args(&mut self) -> &'arena [Expression<'arena>] {
@@ -1291,9 +1544,11 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                 let list = if !self.check(&TokenType::RightParen) {
                     self.parse_expression_list()
                 } else {
-                     &[]
+                    &[]
                 };
-                if self.check(&TokenType::RightParen) { self.advance(); }
+                if self.check(&TokenType::RightParen) {
+                    self.advance();
+                }
                 list
             }
             Some(Ok(TokenType::LeftBrace)) => {
@@ -1310,7 +1565,7 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                     &[]
                 }
             }
-            _ => &[]
+            _ => &[],
         }
     }
 
@@ -1319,9 +1574,13 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
         let start_span = self.advance().span; // consume 'return'
 
         // Parse optional expression list
-        let expressions = if !self.is_at_end() &&
-                            !matches!(self.peek().and_then(|t| t.as_ref().ok()).map(|t| &t.token_type),
-                                     Some(TokenType::Semicolon) | Some(TokenType::Eof) | None) {
+        let expressions = if !self.is_at_end()
+            && !matches!(
+                self.peek()
+                    .and_then(|t| t.as_ref().ok())
+                    .map(|t| &t.token_type),
+                Some(TokenType::Semicolon) | Some(TokenType::Eof) | None
+            ) {
             let expr_list = self.parse_expression_list();
             Some(expr_list)
         } else {
@@ -1337,10 +1596,7 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
         let span = Span::new(start_span.start, end_span.end);
 
-        Some(self.builder.alloc(ReturnStatement {
-            expressions,
-            span,
-        }))
+        Some(self.builder.alloc(ReturnStatement { expressions, span }))
     }
 
     /// Parse expression list (comma-separated expressions)
@@ -1369,7 +1625,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             expr
         } else {
             let span = self.current_span();
-            let found = self.peek().map(|t| format!("{:?}", t.as_ref().unwrap().token_type)).unwrap_or_else(|| "EOF".to_string());
+            let found = self
+                .peek()
+                .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+                .unwrap_or_else(|| "EOF".to_string());
             self.errors.push(ParseError::UnexpectedToken {
                 expected: "expression".to_string(),
                 found,
@@ -1398,14 +1657,19 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
     }
 
     /// Parse expression with minimum precedence (Pratt/precedence climbing parser)
-    fn try_parse_expression_with_precedence(&mut self, min_precedence: u8) -> Option<Expression<'arena>> {
+    fn try_parse_expression_with_precedence(
+        &mut self,
+        min_precedence: u8,
+    ) -> Option<Expression<'arena>> {
         // Parse the left-hand side (could be a prefix expression or unary operator)
         let mut left = if let Some(unary_op) = self.peek_unary_op() {
             // Handle unary operators
             let start_span = self.advance().span; // consume unary operator
 
             // Recursively parse the operand with unary operator precedence
-            let operand = if let Some(expr) = self.try_parse_expression_with_precedence(unary_op.precedence()) {
+            let operand = if let Some(expr) =
+                self.try_parse_expression_with_precedence(unary_op.precedence())
+            {
                 expr
             } else {
                 let span = self.current_span();
@@ -1445,7 +1709,9 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             };
 
             // Recursively parse the right-hand side
-            let right = if let Some(expr) = self.try_parse_expression_with_precedence(next_min_precedence) {
+            let right = if let Some(expr) =
+                self.try_parse_expression_with_precedence(next_min_precedence)
+            {
                 expr
             } else {
                 let span = self.current_span();
@@ -1470,13 +1736,21 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
     }
 
     fn peek_binary_op(&mut self) -> Option<BinaryOp> {
-        self.skip_trivia();  // Skip trivia before checking for binary operators
-        self.peek().and_then(|res| res.as_ref().ok().and_then(|t| BinaryOp::from_token(&t.token_type)))
+        self.skip_trivia(); // Skip trivia before checking for binary operators
+        self.peek().and_then(|res| {
+            res.as_ref()
+                .ok()
+                .and_then(|t| BinaryOp::from_token(&t.token_type))
+        })
     }
 
     fn peek_unary_op(&mut self) -> Option<UnaryOp> {
-        self.skip_trivia();  // Skip trivia before checking for unary operators
-        self.peek().and_then(|res| res.as_ref().ok().and_then(|t| UnaryOp::from_token(&t.token_type)))
+        self.skip_trivia(); // Skip trivia before checking for unary operators
+        self.peek().and_then(|res| {
+            res.as_ref()
+                .ok()
+                .and_then(|t| UnaryOp::from_token(&t.token_type))
+        })
     }
 
     // === Token management utilities ===
@@ -1488,7 +1762,7 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             match current_token {
                 Ok(token) => {
                     std::mem::discriminant(&token.token_type) == std::mem::discriminant(token_type)
-                },
+                }
                 Err(_) => false,
             }
         } else {
@@ -1506,7 +1780,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
     /// Advance to next token and return the consumed token
     fn advance(&mut self) -> Token<'input> {
-        let next = self.peeked.take().or_else(|| self.lexer.next().map(|res| res.map_err(|e| e.into())));
+        let next = self
+            .peeked
+            .take()
+            .or_else(|| self.lexer.next().map(|res| res.map_err(|e| e.into())));
         match next {
             Some(Ok(token)) => {
                 self.previous_span = token.span;
@@ -1534,20 +1811,30 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
     fn current_span(&mut self) -> Span {
         self.skip_trivia();
         let default_pos = self.lexer.current_position();
-        self.peek().map(|res| match res {
-            Ok(t) => t.span,
-            Err(e) => e.span().unwrap_or_else(|| Span::single(default_pos)),
-        }).unwrap_or_else(|| Span::single(default_pos))
+        self.peek()
+            .map(|res| match res {
+                Ok(t) => t.span,
+                Err(e) => e.span().unwrap_or_else(|| Span::single(default_pos)),
+            })
+            .unwrap_or_else(|| Span::single(default_pos))
     }
 
     /// Check if current token is a block terminator
     fn is_block_terminator(&mut self) -> bool {
         self.skip_trivia();
-        let current_token = self.peek().and_then(|res| res.as_ref().ok()).map(|t| &t.token_type);
+        let current_token = self
+            .peek()
+            .and_then(|res| res.as_ref().ok())
+            .map(|t| &t.token_type);
         matches!(
             current_token,
-            Some(TokenType::End) | Some(TokenType::Else) | Some(TokenType::ElseIf) |
-            Some(TokenType::Until) | Some(TokenType::Return) | Some(TokenType::Eof) | None
+            Some(TokenType::End)
+                | Some(TokenType::Else)
+                | Some(TokenType::ElseIf)
+                | Some(TokenType::Until)
+                | Some(TokenType::Return)
+                | Some(TokenType::Eof)
+                | None
         )
     }
 
@@ -1558,20 +1845,22 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             // Check for tokens that can start a new statement
             match self.peek().map(|r| r.as_ref().ok().map(|t| &t.token_type)) {
                 Some(Some(
-                    TokenType::Semicolon |
-                    TokenType::Local |
-                    TokenType::Function |
-                    TokenType::If |
-                    TokenType::While |
-                    TokenType::For |
-                    TokenType::Repeat |
-                    TokenType::Do |
-                    TokenType::Break |
-                    TokenType::Goto |
-                    TokenType::DoubleColon |
-                    TokenType::Return
+                    TokenType::Semicolon
+                    | TokenType::Local
+                    | TokenType::Function
+                    | TokenType::If
+                    | TokenType::While
+                    | TokenType::For
+                    | TokenType::Repeat
+                    | TokenType::Do
+                    | TokenType::Break
+                    | TokenType::Goto
+                    | TokenType::DoubleColon
+                    | TokenType::Return,
                 )) => break,
-                _ => { self.advance(); } // Consume tokens until we find a recovery point
+                _ => {
+                    self.advance();
+                } // Consume tokens until we find a recovery point
             };
         }
     }

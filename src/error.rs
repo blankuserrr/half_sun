@@ -1,10 +1,10 @@
 //! Error types for the Half Sun Lua parser
-//! 
+//!
 //! This module defines comprehensive error types for both lexical analysis
 //! and parsing phases, designed for excellent error reporting and debugging.
 
-use thiserror::Error;
 use std::fmt;
+use thiserror::Error;
 
 /// Position information for error reporting
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -16,7 +16,11 @@ pub struct Position {
 
 impl Position {
     pub fn new(line: usize, column: usize, offset: usize) -> Self {
-        Self { line, column, offset }
+        Self {
+            line,
+            column,
+            offset,
+        }
     }
 }
 
@@ -37,9 +41,12 @@ impl Span {
     pub fn new(start: Position, end: Position) -> Self {
         Self { start, end }
     }
-    
+
     pub fn single(pos: Position) -> Self {
-        Self { start: pos, end: pos }
+        Self {
+            start: pos,
+            end: pos,
+        }
     }
 }
 
@@ -54,18 +61,21 @@ impl fmt::Display for Span {
 pub enum LexError {
     #[error("Invalid character '{character}' at {position}")]
     InvalidCharacter { character: char, position: Position },
-    
+
     #[error("Unterminated string literal at {position}")]
     UnterminatedString { position: Position },
-    
+
     #[error("Unterminated multi-line comment at {position}")]
     UnterminatedComment { position: Position },
-    
+
     #[error("Malformed number at {position}")]
     InvalidNumber { position: Position },
-    
+
     #[error("Invalid escape sequence '\\{sequence}' at {position}")]
-    InvalidEscape { sequence: String, position: Position },
+    InvalidEscape {
+        sequence: String,
+        position: Position,
+    },
 }
 
 /// Parse errors
@@ -79,7 +89,7 @@ pub enum ParseError {
         found: String,
         span: Span,
     },
-    
+
     #[error("Invalid syntax at {span}: {message}")]
     InvalidSyntax { message: String, span: Span },
 }

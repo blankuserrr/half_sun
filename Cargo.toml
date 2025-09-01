@@ -3,24 +3,39 @@ name = "half_sun"
 version = "0.1.0"
 edition = "2024"
 
+
 [dependencies]
-bumpalo = "3.19.0"
 anyhow = "1.0.99"
+bumpalo = "3.19.0"
+ouroboros = "0.18.5"
 thiserror = "2.0.16"
-mimalloc = {version = "0.1.48", features = ["v3"]}
+
+
+[dependencies.mimalloc]
+version = "0.1.48"
+features = [ "v3" ]
+
 
 [dev-dependencies]
+criterion = "0.7.0"
 full_moon = "2.0.0"
-lua_parser = { git = "https://github.com/blankuserrr/lua_rust" }
+
+
+[dev-dependencies.lua_parser]
+git = "https://github.com/blankuserrr/lua_rust"
+
 
 [lib]
 name = "half_sun"
 path = "src/lib.rs"
 
+
 [[example]]
 name = "parse_file"
 path = "examples/parse_file.rs"
 
-[[example]]
+
+[[bench]]
 name = "benchmark"
-path = "examples/benchmark.rs"
+path = "benches/benchmark.rs"
+harness = false

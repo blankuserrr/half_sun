@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 //! Abstract Syntax Tree definitions for Lua
-//! 
+//!
 //! This module defines the AST nodes using arena allocation for maximum performance
 //! and zero-copy string references for minimal memory overhead.
 
@@ -35,55 +35,49 @@ impl<'arena> Block<'arena> {
 pub enum Statement<'arena> {
     /// Empty statement (just a semicolon)
     Empty { span: Span },
-    
+
     /// Variable assignment: varlist = explist
     Assignment {
         variables: &'arena [&'arena Variable<'arena>],
         expressions: &'arena [Expression<'arena>],
         span: Span,
     },
-    
+
     /// An expression used as a statement (typically a function call)
     Expression {
         expression: &'arena Expression<'arena>,
         span: Span,
     },
-    
+
     /// Label statement: ::label::
-    Label {
-        name: &'arena str,
-        span: Span,
-    },
-    
+    Label { name: &'arena str, span: Span },
+
     /// Break statement
     Break { span: Span },
-    
+
     /// Goto statement: goto label
-    Goto {
-        label: &'arena str,
-        span: Span,
-    },
-    
+    Goto { label: &'arena str, span: Span },
+
     /// Do block end
     Do {
         block: &'arena Block<'arena>,
         span: Span,
     },
-    
+
     /// While loop: while exp do block end
     While {
         condition: &'arena Expression<'arena>,
         body: &'arena Block<'arena>,
         span: Span,
     },
-    
+
     /// Repeat loop: repeat block until exp
     Repeat {
         body: &'arena Block<'arena>,
         condition: &'arena Expression<'arena>,
         span: Span,
     },
-    
+
     /// If statement: if exp then block {elseif exp then block} [else block] end
     If {
         condition: &'arena Expression<'arena>,
@@ -92,7 +86,7 @@ pub enum Statement<'arena> {
         else_block: Option<&'arena Block<'arena>>,
         span: Span,
     },
-    
+
     /// Numeric for loop: for name = exp, exp [, exp] do block end
     NumericFor {
         variable: &'arena str,
@@ -102,7 +96,7 @@ pub enum Statement<'arena> {
         body: &'arena Block<'arena>,
         span: Span,
     },
-    
+
     /// Generic for loop: for namelist in explist do block end
     GenericFor {
         variables: &'arena [&'arena str],
@@ -110,21 +104,21 @@ pub enum Statement<'arena> {
         body: &'arena Block<'arena>,
         span: Span,
     },
-    
+
     /// Function definition: function funcname funcbody
     FunctionDef {
         name: &'arena FunctionName<'arena>,
         body: &'arena FunctionBody<'arena>,
         span: Span,
     },
-    
+
     /// Local function: local function name funcbody
     LocalFunction {
         name: &'arena str,
         body: &'arena FunctionBody<'arena>,
         span: Span,
     },
-    
+
     /// Local variables: local attnamelist [= explist]
     LocalVariables {
         names: &'arena [AttributedName<'arena>],
@@ -236,18 +230,15 @@ impl Node for AttributedName<'_> {
 #[derive(Debug, Clone)]
 pub enum Variable<'arena> {
     /// Simple identifier
-    Identifier {
-        name: &'arena str,
-        span: Span,
-    },
-    
+    Identifier { name: &'arena str, span: Span },
+
     /// Table field access: exp[exp]
     Index {
         table: &'arena Expression<'arena>,
         index: &'arena Expression<'arena>,
         span: Span,
     },
-    
+
     /// Table field access: exp.name
     Field {
         table: &'arena Expression<'arena>,
@@ -270,17 +261,28 @@ impl Node for Variable<'_> {
 #[derive(Debug, Clone)]
 pub enum Expression<'arena> {
     /// Literals
-    Nil { span: Span },
-    Boolean { value: bool, span: Span },
-    Number { value: &'arena str, span: Span },
-    String { value: &'arena str, span: Span },
-    
+    Nil {
+        span: Span,
+    },
+    Boolean {
+        value: bool,
+        span: Span,
+    },
+    Number {
+        value: &'arena str,
+        span: Span,
+    },
+    String {
+        value: &'arena str,
+        span: Span,
+    },
+
     /// Variable reference
     Variable {
         var: &'arena Variable<'arena>,
         span: Span,
     },
-    
+
     /// Function call
     FunctionCall {
         function: &'arena Expression<'arena>,
@@ -288,7 +290,7 @@ pub enum Expression<'arena> {
         arguments: &'arena [Expression<'arena>],
         span: Span,
     },
-    
+
     /// Binary operation
     BinaryOp {
         left: &'arena Expression<'arena>,
@@ -296,29 +298,31 @@ pub enum Expression<'arena> {
         right: &'arena Expression<'arena>,
         span: Span,
     },
-    
+
     /// Unary operation
     UnaryOp {
         operator: UnaryOp,
         operand: &'arena Expression<'arena>,
         span: Span,
     },
-    
+
     /// Table constructor
     Table {
         fields: &'arena [TableField<'arena>],
         span: Span,
     },
-    
+
     /// Function definition: function funcbody
     Function {
         body: &'arena FunctionBody<'arena>,
         span: Span,
     },
-    
+
     /// Varargs: ...
-    Varargs { span: Span },
-    
+    Varargs {
+        span: Span,
+    },
+
     /// Parenthesized expression
     Parenthesized {
         expression: &'arena Expression<'arena>,
@@ -360,14 +364,14 @@ pub enum TableField<'arena> {
         value: &'arena Expression<'arena>,
         span: Span,
     },
-    
+
     /// name = exp
     Named {
         key: &'arena str,
         value: &'arena Expression<'arena>,
         span: Span,
     },
-    
+
     /// exp (list-style)
     List {
         value: &'arena Expression<'arena>,
@@ -394,7 +398,7 @@ impl<'arena> AstBuilder<'arena> {
     pub fn new(arena: &'arena Bump) -> Self {
         Self { arena }
     }
-    
+
     /// Allocate a slice in the arena
     pub fn alloc_slice<T>(&self, items: &[T]) -> &'arena [T]
     where
@@ -402,12 +406,12 @@ impl<'arena> AstBuilder<'arena> {
     {
         self.arena.alloc_slice_clone(items)
     }
-    
+
     /// Allocate a single item in the arena
     pub fn alloc<T>(&self, item: T) -> &'arena T {
         self.arena.alloc(item)
     }
-    
+
     /// Allocate a string slice in the arena
     pub fn alloc_str(&self, s: &str) -> &'arena str {
         self.arena.alloc_str(s)

@@ -25,7 +25,10 @@ pub fn walk_block<'arena, V: Visitor<'arena> + ?Sized>(visitor: &mut V, block: &
     }
 }
 
-pub fn walk_statement<'arena, V: Visitor<'arena> + ?Sized>(visitor: &mut V, stmt: &Statement<'arena>) {
+pub fn walk_statement<'arena, V: Visitor<'arena> + ?Sized>(
+    visitor: &mut V,
+    stmt: &Statement<'arena>,
+) {
     match stmt {
         Statement::If {
             condition,
@@ -62,11 +65,15 @@ pub fn walk_statement<'arena, V: Visitor<'arena> + ?Sized>(visitor: &mut V, stmt
         Statement::Do { block, .. } => {
             visitor.visit_block(block);
         }
-        Statement::While { condition, body, .. } => {
+        Statement::While {
+            condition, body, ..
+        } => {
             visitor.visit_expression(condition);
             visitor.visit_block(body);
         }
-        Statement::Repeat { body, condition, .. } => {
+        Statement::Repeat {
+            body, condition, ..
+        } => {
             visitor.visit_block(body);
             visitor.visit_expression(condition);
         }
@@ -109,7 +116,10 @@ pub fn walk_statement<'arena, V: Visitor<'arena> + ?Sized>(visitor: &mut V, stmt
     }
 }
 
-pub fn walk_expression<'arena, V: Visitor<'arena> + ?Sized>(visitor: &mut V, expr: &Expression<'arena>) {
+pub fn walk_expression<'arena, V: Visitor<'arena> + ?Sized>(
+    visitor: &mut V,
+    expr: &Expression<'arena>,
+) {
     match expr {
         Expression::Variable { var, .. } => {
             walk_variable(visitor, var);

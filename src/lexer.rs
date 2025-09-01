@@ -1,11 +1,11 @@
 //! Zero-copy lexer for Lua source code
-//! 
+//!
 //! This lexer is designed for maximum performance with zero-copy token extraction
 //! and efficient preservation of comments and whitespace for lossless parsing.
 
 use crate::error::{LexError, LexResult, Position, Span};
-use std::str::Chars;
 use std::iter::Peekable;
+use std::str::Chars;
 
 /// Token types representing all Lua language elements
 #[derive(Debug, PartialEq)]
@@ -14,29 +14,75 @@ pub enum TokenType<'a> {
     Number(&'a str),
     String(&'a str),
     Identifier(&'a str),
-    
+
     // Keywords
-    And, Break, Do, Else, ElseIf, End, False, For, Function,
-    Goto, If, In, Local, Nil, Not, Or, Repeat, Return,
-    Then, True, Until, While,
-    
+    And,
+    Break,
+    Do,
+    Else,
+    ElseIf,
+    End,
+    False,
+    For,
+    Function,
+    Goto,
+    If,
+    In,
+    Local,
+    Nil,
+    Not,
+    Or,
+    Repeat,
+    Return,
+    Then,
+    True,
+    Until,
+    While,
+
     // Operators
-    Plus, Minus, Star, Slash, DoubleSlash, Percent, Caret,
-    Ampersand, Pipe, Tilde, LeftShift, RightShift,
-    DoubleDot, Lt, Le, Gt, Ge, Eq, Ne, Len,
-    
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    DoubleSlash,
+    Percent,
+    Caret,
+    Ampersand,
+    Pipe,
+    Tilde,
+    LeftShift,
+    RightShift,
+    DoubleDot,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    Eq,
+    Ne,
+    Len,
+
     // Punctuation
-    LeftParen, RightParen, LeftBrace, RightBrace, LeftBracket, RightBracket,
-    Semicolon, Comma, Dot, Colon, DoubleColon, Assign,
-    
+    LeftParen,
+    RightParen,
+    LeftBrace,
+    RightBrace,
+    LeftBracket,
+    RightBracket,
+    Semicolon,
+    Comma,
+    Dot,
+    Colon,
+    DoubleColon,
+    Assign,
+
     // Special
-    Ellipsis,    // ...
-    
+    Ellipsis, // ...
+
     // Trivia (preserved for lossless parsing)
     Whitespace(&'a str),
     LineComment(&'a str),
     BlockComment(&'a str),
-    
+
     // Meta
     Eof,
 }
@@ -72,16 +118,16 @@ impl<'a> Lexer<'a> {
             current_offset: 0,
         }
     }
-    
+
     /// Get the next token from the input stream, including trivia
     pub fn next_token(&mut self) -> LexResult<Token<'a>> {
         if self.is_at_end() {
             return Ok(self.make_token(TokenType::Eof, self.position, self.position));
         }
-    
+
         let start_pos = self.position;
         let start_offset = self.current_offset;
-    
+
         if let Some(ch) = self.peek_char() {
             if ch.is_whitespace() {
                 self.advance();
@@ -108,32 +154,53 @@ impl<'a> Lexer<'a> {
                 }
             }
         }
-    
+
         // If no trivia, read a significant token
         self.read_significant_token()
     }
-    
+
     /// Read a significant (non-trivia) token
     fn read_significant_token(&mut self) -> LexResult<Token<'a>> {
         if self.is_at_end() {
             return Ok(self.make_token(TokenType::Eof, self.position, self.position));
         }
-        
+
         let start_pos = self.position;
         let start_offset = self.current_offset;
-        
+
         match self.peek_char() {
             Some(ch) => {
                 let token_type = match ch {
                     // Single character tokens
-                    '+' => { self.advance(); TokenType::Plus }
-                    '-' => { self.advance(); TokenType::Minus }
-                    '*' => { self.advance(); TokenType::Star }
-                    '%' => { self.advance(); TokenType::Percent }
-                    '^' => { self.advance(); TokenType::Caret }
-                    '&' => { self.advance(); TokenType::Ampersand }
-                    '|' => { self.advance(); TokenType::Pipe }
-                    '~' => { 
+                    '+' => {
+                        self.advance();
+                        TokenType::Plus
+                    }
+                    '-' => {
+                        self.advance();
+                        TokenType::Minus
+                    }
+                    '*' => {
+                        self.advance();
+                        TokenType::Star
+                    }
+                    '%' => {
+                        self.advance();
+                        TokenType::Percent
+                    }
+                    '^' => {
+                        self.advance();
+                        TokenType::Caret
+                    }
+                    '&' => {
+                        self.advance();
+                        TokenType::Ampersand
+                    }
+                    '|' => {
+                        self.advance();
+                        TokenType::Pipe
+                    }
+                    '~' => {
                         self.advance();
                         if self.peek_char() == Some('=') {
                             self.advance();
@@ -142,11 +209,23 @@ impl<'a> Lexer<'a> {
                             TokenType::Tilde
                         }
                     }
-                    '(' => { self.advance(); TokenType::LeftParen }
-                    ')' => { self.advance(); TokenType::RightParen }
-                    '{' => { self.advance(); TokenType::LeftBrace }
-                    '}' => { self.advance(); TokenType::RightBrace }
-                    '[' => { 
+                    '(' => {
+                        self.advance();
+                        TokenType::LeftParen
+                    }
+                    ')' => {
+                        self.advance();
+                        TokenType::RightParen
+                    }
+                    '{' => {
+                        self.advance();
+                        TokenType::LeftBrace
+                    }
+                    '}' => {
+                        self.advance();
+                        TokenType::RightBrace
+                    }
+                    '[' => {
                         self.advance();
                         // Check for long string/comment
                         if self.peek_char() == Some('[') || self.peek_char() == Some('=') {
@@ -154,9 +233,18 @@ impl<'a> Lexer<'a> {
                         }
                         TokenType::LeftBracket
                     }
-                    ']' => { self.advance(); TokenType::RightBracket }
-                    ';' => { self.advance(); TokenType::Semicolon }
-                    ',' => { self.advance(); TokenType::Comma }
+                    ']' => {
+                        self.advance();
+                        TokenType::RightBracket
+                    }
+                    ';' => {
+                        self.advance();
+                        TokenType::Semicolon
+                    }
+                    ',' => {
+                        self.advance();
+                        TokenType::Comma
+                    }
                     ':' => {
                         self.advance();
                         if self.peek_char() == Some(':') {
@@ -178,16 +266,28 @@ impl<'a> Lexer<'a> {
                     '<' => {
                         self.advance();
                         match self.peek_char() {
-                            Some('=') => { self.advance(); TokenType::Le }
-                            Some('<') => { self.advance(); TokenType::LeftShift }
+                            Some('=') => {
+                                self.advance();
+                                TokenType::Le
+                            }
+                            Some('<') => {
+                                self.advance();
+                                TokenType::LeftShift
+                            }
                             _ => TokenType::Lt,
                         }
                     }
                     '>' => {
                         self.advance();
                         match self.peek_char() {
-                            Some('=') => { self.advance(); TokenType::Ge }
-                            Some('>') => { self.advance(); TokenType::RightShift }
+                            Some('=') => {
+                                self.advance();
+                                TokenType::Ge
+                            }
+                            Some('>') => {
+                                self.advance();
+                                TokenType::RightShift
+                            }
                             _ => TokenType::Gt,
                         }
                     }
@@ -219,27 +319,34 @@ impl<'a> Lexer<'a> {
                         }
                     }
                     '"' | '\'' => return self.read_string(start_pos, start_offset),
-                    '#' => { self.advance(); TokenType::Len }
+                    '#' => {
+                        self.advance();
+                        TokenType::Len
+                    }
                     c if c.is_ascii_digit() => return self.read_number(start_pos, start_offset),
-                    c if c.is_alphabetic() || c == '_' => return self.read_identifier_or_keyword(start_pos, start_offset),
-                    c => return Err(LexError::InvalidCharacter { 
-                        character: c, 
-                        position: start_pos 
-                    }),
+                    c if c.is_alphabetic() || c == '_' => {
+                        return self.read_identifier_or_keyword(start_pos, start_offset);
+                    }
+                    c => {
+                        return Err(LexError::InvalidCharacter {
+                            character: c,
+                            position: start_pos,
+                        });
+                    }
                 };
-                
+
                 let end_pos = self.position;
                 Ok(Token::new(token_type, Span::new(start_pos, end_pos)))
             }
             None => Ok(self.make_token(TokenType::Eof, start_pos, start_pos)),
         }
     }
-    
+
     /// Peek at the current character without consuming it
     fn peek_char(&mut self) -> Option<char> {
         self.chars.peek().copied()
     }
-    
+
     /// Advance to the next character and update position
     fn advance(&mut self) -> Option<char> {
         if let Some(ch) = self.chars.next() {
@@ -256,14 +363,19 @@ impl<'a> Lexer<'a> {
             None
         }
     }
-    
+
     /// Check if we're at the end of input
     fn is_at_end(&mut self) -> bool {
         self.peek_char().is_none()
     }
-    
+
     /// Create a token with the given type and span
-    pub fn make_token(&self, token_type: TokenType<'a>, start: Position, end: Position) -> Token<'a> {
+    pub fn make_token(
+        &self,
+        token_type: TokenType<'a>,
+        start: Position,
+        end: Position,
+    ) -> Token<'a> {
         let span = Span::new(start, end);
         Token::new(token_type, span)
     }
@@ -272,11 +384,13 @@ impl<'a> Lexer<'a> {
     pub fn current_position(&self) -> Position {
         self.position
     }
-    
+
     /// Read a string literal (quoted) with escape sequence validation
     fn read_string(&mut self, start_pos: Position, start_offset: usize) -> LexResult<Token<'a>> {
-        let quote_char = self.advance().ok_or(LexError::UnterminatedString { position: start_pos })?; // consume opening quote
-        
+        let quote_char = self.advance().ok_or(LexError::UnterminatedString {
+            position: start_pos,
+        })?; // consume opening quote
+
         while let Some(ch) = self.peek_char() {
             if ch == quote_char {
                 self.advance(); // consume closing quote
@@ -307,15 +421,15 @@ impl<'a> Lexer<'a> {
                                     if hex_ch.is_ascii_hexdigit() {
                                         self.advance();
                                     } else {
-                                        return Err(LexError::InvalidEscape { 
-                                            sequence: format!("x{}", hex_ch), 
-                                            position: self.position 
+                                        return Err(LexError::InvalidEscape {
+                                            sequence: format!("x{}", hex_ch),
+                                            position: self.position,
                                         });
                                     }
                                 } else {
-                                    return Err(LexError::InvalidEscape { 
-                                        sequence: "x".to_string(), 
-                                        position: self.position 
+                                    return Err(LexError::InvalidEscape {
+                                        sequence: "x".to_string(),
+                                        position: self.position,
                                     });
                                 }
                             }
@@ -326,48 +440,48 @@ impl<'a> Lexer<'a> {
                             if self.peek_char() == Some('{') {
                                 self.advance(); // consume '{'
                                 let mut hex_digits = 0;
-                                
+
                                 // Read hex digits
                                 while let Some(hex_ch) = self.peek_char() {
                                     if hex_ch.is_ascii_hexdigit() {
                                         self.advance();
                                         hex_digits += 1;
                                         if hex_digits > 6 {
-                                            return Err(LexError::InvalidEscape { 
-                                                sequence: "u{...}".to_string(), 
-                                                position: self.position 
+                                            return Err(LexError::InvalidEscape {
+                                                sequence: "u{...}".to_string(),
+                                                position: self.position,
                                             });
                                         }
                                     } else if hex_ch == '}' {
                                         break;
                                     } else {
-                                        return Err(LexError::InvalidEscape { 
-                                            sequence: format!("u{{{}", hex_ch), 
-                                            position: self.position 
+                                        return Err(LexError::InvalidEscape {
+                                            sequence: format!("u{{{}", hex_ch),
+                                            position: self.position,
                                         });
                                     }
                                 }
-                                
+
                                 // Must have at least one hex digit and close with '}'
                                 if hex_digits == 0 {
-                                    return Err(LexError::InvalidEscape { 
-                                        sequence: "u{}".to_string(), 
-                                        position: self.position 
+                                    return Err(LexError::InvalidEscape {
+                                        sequence: "u{}".to_string(),
+                                        position: self.position,
                                     });
                                 }
-                                
+
                                 if self.peek_char() == Some('}') {
                                     self.advance(); // consume '}'
                                 } else {
-                                    return Err(LexError::InvalidEscape { 
-                                        sequence: "u{...".to_string(), 
-                                        position: self.position 
+                                    return Err(LexError::InvalidEscape {
+                                        sequence: "u{...".to_string(),
+                                        position: self.position,
                                     });
                                 }
                             } else {
-                                return Err(LexError::InvalidEscape { 
-                                    sequence: "u".to_string(), 
-                                    position: self.position 
+                                return Err(LexError::InvalidEscape {
+                                    sequence: "u".to_string(),
+                                    position: self.position,
                                 });
                             }
                         }
@@ -386,35 +500,42 @@ impl<'a> Lexer<'a> {
                             }
                         }
                         _ => {
-                            return Err(LexError::InvalidEscape { 
-                                sequence: escaped_ch.to_string(), 
-                                position: self.position 
+                            return Err(LexError::InvalidEscape {
+                                sequence: escaped_ch.to_string(),
+                                position: self.position,
                             });
                         }
                     }
                 } else {
-                    return Err(LexError::UnterminatedString { position: start_pos });
+                    return Err(LexError::UnterminatedString {
+                        position: start_pos,
+                    });
                 }
             } else if ch == '\n' {
-                return Err(LexError::UnterminatedString { position: start_pos });
+                return Err(LexError::UnterminatedString {
+                    position: start_pos,
+                });
             } else {
                 self.advance();
             }
         }
-        
+
         // Check if we reached EOF without finding closing quote
         if self.is_at_end() {
-            return Err(LexError::UnterminatedString { position: start_pos });
+            return Err(LexError::UnterminatedString {
+                position: start_pos,
+            });
         }
-        
+
         let text = &self.input[start_offset..self.current_offset];
         let span = Span::new(start_pos, self.position);
         Ok(Token::new(TokenType::String(text), span))
     }
-    
+
     /// Read a number literal with strict validation (like Lua 5.4)
     fn read_number(&mut self, start_pos: Position, start_offset: usize) -> LexResult<Token<'a>> {
-        let is_hex = self.input[start_offset..].starts_with("0x") || self.input[start_offset..].starts_with("0X");
+        let is_hex = self.input[start_offset..].starts_with("0x")
+            || self.input[start_offset..].starts_with("0X");
 
         if is_hex {
             self.advance(); // 0
@@ -429,12 +550,14 @@ impl<'a> Lexer<'a> {
                 }
             }
             if self.current_offset == hex_start_offset {
-                return Err(LexError::InvalidNumber { position: start_pos });
+                return Err(LexError::InvalidNumber {
+                    position: start_pos,
+                });
             }
         } else {
             // Parse integer part
             self.consume_digits();
-            
+
             // Parse optional decimal part
             if self.peek_char() == Some('.') {
                 let remainder = &self.input[self.current_offset..];
@@ -443,22 +566,22 @@ impl<'a> Lexer<'a> {
                     self.consume_digits();
                 }
             }
-            
+
             // Parse optional exponent part
             if let Some(ch) = self.peek_char() {
                 if ch == 'e' || ch == 'E' {
                     let save_offset = self.current_offset;
                     let save_position = self.position;
-                    
+
                     self.advance(); // consume 'e' or 'E'
-                    
+
                     // Optional sign
                     if let Some(sign) = self.peek_char() {
                         if sign == '+' || sign == '-' {
                             self.advance();
                         }
                     }
-                    
+
                     // Exponent digits are required
                     if !self.consume_digits() {
                         // No digits after exponent, backtrack
@@ -467,19 +590,22 @@ impl<'a> Lexer<'a> {
                 }
             }
         }
-        
+
         // After parsing, check for invalid trailing characters.
         if let Some(ch) = self.peek_char() {
-            if ch.is_alphabetic() { // e.g. 123a
-                return Err(LexError::InvalidNumber { position: start_pos });
+            if ch.is_alphabetic() {
+                // e.g. 123a
+                return Err(LexError::InvalidNumber {
+                    position: start_pos,
+                });
             }
         }
-        
+
         let text = &self.input[start_offset..self.current_offset];
         let span = Span::new(start_pos, self.position);
         Ok(Token::new(TokenType::Number(text), span))
     }
-    
+
     /// Consume consecutive digits, returning true if any were consumed
     fn consume_digits(&mut self) -> bool {
         let mut consumed = false;
@@ -493,9 +619,13 @@ impl<'a> Lexer<'a> {
         }
         consumed
     }
-    
+
     /// Read an identifier or keyword
-    fn read_identifier_or_keyword(&mut self, start_pos: Position, start_offset: usize) -> LexResult<Token<'a>> {
+    fn read_identifier_or_keyword(
+        &mut self,
+        start_pos: Position,
+        start_offset: usize,
+    ) -> LexResult<Token<'a>> {
         while let Some(ch) = self.peek_char() {
             if ch.is_alphanumeric() || ch == '_' {
                 self.advance();
@@ -503,10 +633,10 @@ impl<'a> Lexer<'a> {
                 break;
             }
         }
-        
+
         let text = &self.input[start_offset..self.current_offset];
         let span = Span::new(start_pos, self.position);
-        
+
         let token_type = match text {
             "and" => TokenType::And,
             "break" => TokenType::Break,
@@ -532,12 +662,16 @@ impl<'a> Lexer<'a> {
             "while" => TokenType::While,
             _ => TokenType::Identifier(text),
         };
-        
+
         Ok(Token::new(token_type, span))
     }
-    
+
     /// Read a line comment (starting with --)
-    fn read_line_comment(&mut self, start_pos: Position, start_offset: usize) -> LexResult<Token<'a>> {
+    fn read_line_comment(
+        &mut self,
+        start_pos: Position,
+        start_offset: usize,
+    ) -> LexResult<Token<'a>> {
         self.advance(); // consume '-'
         self.advance(); // consume '-'
 
@@ -548,34 +682,38 @@ impl<'a> Lexer<'a> {
             }
             self.advance();
         }
-        
+
         let text = &self.input[start_offset..self.current_offset];
         let span = Span::new(start_pos, self.position);
         Ok(Token::new(TokenType::LineComment(text), span))
     }
-    
+
     /// Read a block comment (starting with --[[ or --[=[)
-    fn read_block_comment(&mut self, start_pos: Position, start_offset: usize) -> LexResult<Token<'a>> {
+    fn read_block_comment(
+        &mut self,
+        start_pos: Position,
+        start_offset: usize,
+    ) -> LexResult<Token<'a>> {
         // Consume '--'
         self.advance(); // first '-'
         self.advance(); // second '-'
-        
+
         // Now we should be at '['
         self.advance(); // consume '['
-        
+
         // Parse the bracket level
         let level = self.parse_long_bracket_level()?;
-        
+
         if let Some(bracket_level) = level {
             // Consume the final '[' of the opening bracket
             if self.peek_char() == Some('[') {
                 self.advance(); // consume final '['
-                
+
                 // Skip the optional newline immediately after opening bracket
                 if self.peek_char() == Some('\n') {
                     self.advance();
                 }
-                
+
                 // Find the matching closing bracket
                 loop {
                     if let Some(']') = self.peek_char() {
@@ -585,11 +723,15 @@ impl<'a> Lexer<'a> {
                     }
 
                     if self.advance().is_none() {
-                        return Err(LexError::UnterminatedComment { position: start_pos });
+                        return Err(LexError::UnterminatedComment {
+                            position: start_pos,
+                        });
                     }
                 }
             } else {
-                return Err(LexError::UnterminatedComment { position: start_pos });
+                return Err(LexError::UnterminatedComment {
+                    position: start_pos,
+                });
             }
         } else {
             // Treat as line comment starting with --[
@@ -600,25 +742,29 @@ impl<'a> Lexer<'a> {
                 self.advance();
             }
         }
-        
+
         let text = &self.input[start_offset..self.current_offset];
         let span = Span::new(start_pos, self.position);
         Ok(Token::new(TokenType::BlockComment(text), span))
     }
-    
+
     /// Read long bracket content (strings or comments)
-    fn read_long_bracket_content(&mut self, start_pos: Position, start_offset: usize) -> LexResult<Token<'a>> {
+    fn read_long_bracket_content(
+        &mut self,
+        start_pos: Position,
+        start_offset: usize,
+    ) -> LexResult<Token<'a>> {
         // Parse the opening bracket level (count '=' signs)
         let level = self.parse_long_bracket_level()?;
-        
+
         if level.is_none() {
             // Not a long bracket, treat as regular bracket
             let span = Span::new(start_pos, self.position);
             return Ok(Token::new(TokenType::LeftBracket, span));
         }
-        
+
         let bracket_level = level.unwrap();
-        
+
         // Consume the final '[' of the opening bracket
         if self.peek_char() != Some('[') {
             // Not a long bracket, treat as regular bracket
@@ -626,12 +772,12 @@ impl<'a> Lexer<'a> {
             return Ok(Token::new(TokenType::LeftBracket, span));
         }
         self.advance(); // consume final '['
-        
+
         // Skip the optional newline immediately after opening bracket
         if self.peek_char() == Some('\n') {
             self.advance();
         }
-        
+
         // Find the matching closing bracket
         loop {
             if let Some(']') = self.peek_char() {
@@ -641,26 +787,28 @@ impl<'a> Lexer<'a> {
                 }
             }
             if self.advance().is_none() {
-                return Err(LexError::UnterminatedComment { position: start_pos });
+                return Err(LexError::UnterminatedComment {
+                    position: start_pos,
+                });
             }
         }
-        
+
         let text = &self.input[start_offset..self.current_offset];
         let span = Span::new(start_pos, self.position);
         Ok(Token::new(TokenType::String(text), span))
     }
-    
+
     /// Parse the level of a long bracket (count '=' characters)
     /// Returns None if this is not a valid long bracket start
     fn parse_long_bracket_level(&mut self) -> LexResult<Option<usize>> {
         let mut level = 0;
-        
+
         // We've already consumed the first '[', now count '=' characters
         while self.peek_char() == Some('=') {
             self.advance();
             level += 1;
         }
-        
+
         // Must be followed by '[' to be a valid long bracket
         if self.peek_char() == Some('[') {
             Ok(Some(level))
@@ -668,27 +816,27 @@ impl<'a> Lexer<'a> {
             Ok(None)
         }
     }
-    
+
     /// Try to match a closing bracket of the given level
     /// Returns true if matched, false otherwise
     /// If false, resets position to before the ']'
     fn try_match_closing_bracket(&mut self, expected_level: usize) -> bool {
         let save_offset = self.current_offset;
         let save_position = self.position;
-        
+
         // Consume the ']'
         let consumed = self.advance();
         if consumed != Some(']') {
             return false;
         }
-        
+
         // Count '=' characters
         let mut level = 0;
         while self.peek_char() == Some('=') {
             self.advance();
             level += 1;
         }
-        
+
         // Must end with ']' and have the right level
         if self.peek_char() == Some(']') && level == expected_level {
             self.advance(); // consume final ']'
@@ -699,7 +847,7 @@ impl<'a> Lexer<'a> {
             false
         }
     }
-    
+
     /// Reset lexer state to a specific offset and position
     fn reset_to_offset(&mut self, offset: usize, position: Position) {
         self.current_offset = offset;
@@ -718,7 +866,7 @@ impl<'a> Lexer<'a> {
 /// Iterator interface for the lexer
 impl<'a> Iterator for Lexer<'a> {
     type Item = LexResult<Token<'a>>;
-    
+
     fn next(&mut self) -> Option<Self::Item> {
         match self.next_token() {
             Ok(token) if matches!(token.token_type, TokenType::Eof) => None,
