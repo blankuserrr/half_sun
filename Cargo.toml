@@ -39,3 +39,8 @@ path = "examples/parse_file.rs"
 name = "benchmark"
 path = "benches/benchmark.rs"
 harness = false
+
+[[bench]]
+name = "benchmark_multi"
+path = "benches/benchmark_multi.rs"
+harness = false
