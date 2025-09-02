@@ -53,10 +53,9 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             if matches!(
                 self.peek(),
                 Some(Ok(Token {
-                    token_type:
-                        TokenType::Whitespace(_)
-                            | TokenType::LineComment(_)
-                            | TokenType::BlockComment(_),
+                    token_type: TokenType::Whitespace(_)
+                        | TokenType::LineComment(_)
+                        | TokenType::BlockComment(_),
                     ..
                 }))
             ) {
@@ -410,7 +409,9 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                                         if let Expression::Variable { var, .. } = next_expr {
                                             variables.push(var);
                                         } else {
-                                            self.push_invalid("Invalid left-hand side of assignment");
+                                            self.push_invalid(
+                                                "Invalid left-hand side of assignment",
+                                            );
                                             return None;
                                         }
                                     } else {
