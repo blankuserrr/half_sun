@@ -10,19 +10,41 @@ use crate::node::Node;
 use crate::visitors::Visitor;
 use bumpalo::Bump;
 
+/// Common slice aliases to simplify list types across the AST
+pub type List<'arena, T> = &'arena [T];
+pub type RefList<'arena, T> = &'arena [&'arena T];
+pub type StrList<'arena> = &'arena [&'arena str];
+
+// Macros to reduce boilerplate for Node implementations
+macro_rules! impl_node_struct {
+    ($name:ident $(<$($gen:tt),*>)?) => {
+        impl$(<$($gen),*>)? Node for $name$(<$($gen),*>)? {
+            fn span(&self) -> Span { self.span }
+        }
+    };
+}
+
+macro_rules! impl_node_enum_with_span {
+    ($name:ident $(<$($gen:tt),*>)?, $($variant:ident),+ $(,)?) => {
+        impl$(<$($gen),*>)? Node for $name$(<$($gen),*>)? {
+            fn span(&self) -> Span {
+                match self {
+                    $( Self::$variant { span, .. } => *span, )+
+                }
+            }
+        }
+    };
+}
+
 /// A block is a sequence of statements with an optional return statement
 #[derive(Debug, Clone)]
 pub struct Block<'arena> {
-    pub statements: &'arena [Statement<'arena>],
+    pub statements: List<'arena, Statement<'arena>>,
     pub return_stmt: Option<&'arena ReturnStatement<'arena>>,
     pub span: Span,
 }
 
-impl Node for Block<'_> {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
+impl_node_struct!(Block<'arena>);
 
 impl<'arena> Block<'arena> {
     pub fn accept<V: Visitor<'arena>>(&self, visitor: &mut V) {
@@ -38,8 +60,8 @@ pub enum Statement<'arena> {
 
     /// Variable assignment: varlist = explist
     Assignment {
-        variables: &'arena [&'arena Variable<'arena>],
-        expressions: &'arena [Expression<'arena>],
+        variables: RefList<'arena, Variable<'arena>>,
+        expressions: List<'arena, Expression<'arena>>,
         span: Span,
     },
 
@@ -82,7 +104,7 @@ pub enum Statement<'arena> {
     If {
         condition: &'arena Expression<'arena>,
         then_block: &'arena Block<'arena>,
-        elseif_clauses: &'arena [ElseIfClause<'arena>],
+        elseif_clauses: List<'arena, ElseIfClause<'arena>>,
         else_block: Option<&'arena Block<'arena>>,
         span: Span,
     },
@@ -99,8 +121,8 @@ pub enum Statement<'arena> {
 
     /// Generic for loop: for namelist in explist do block end
     GenericFor {
-        variables: &'arena [&'arena str],
-        expressions: &'arena [Expression<'arena>],
+        variables: StrList<'arena>,
+        expressions: List<'arena, Expression<'arena>>,
         body: &'arena Block<'arena>,
         span: Span,
     },
@@ -121,8 +143,8 @@ pub enum Statement<'arena> {
 
     /// Local variables: local attnamelist [= explist]
     LocalVariables {
-        names: &'arena [AttributedName<'arena>],
-        expressions: Option<&'arena [Expression<'arena>]>,
+        names: List<'arena, AttributedName<'arena>>,
+        expressions: Option<List<'arena, Expression<'arena>>>,
         span: Span,
     },
 }
@@ -133,40 +155,33 @@ impl<'arena> Statement<'arena> {
     }
 }
 
-impl Node for Statement<'_> {
-    fn span(&self) -> Span {
-        match self {
-            Statement::Empty { span } => *span,
-            Statement::Assignment { span, .. } => *span,
-            Statement::Expression { span, .. } => *span,
-            Statement::Label { span, .. } => *span,
-            Statement::Break { span } => *span,
-            Statement::Goto { span, .. } => *span,
-            Statement::Do { span, .. } => *span,
-            Statement::While { span, .. } => *span,
-            Statement::Repeat { span, .. } => *span,
-            Statement::If { span, .. } => *span,
-            Statement::NumericFor { span, .. } => *span,
-            Statement::GenericFor { span, .. } => *span,
-            Statement::FunctionDef { span, .. } => *span,
-            Statement::LocalFunction { span, .. } => *span,
-            Statement::LocalVariables { span, .. } => *span,
-        }
-    }
-}
+impl_node_enum_with_span!(
+    Statement<'arena>,
+    Empty,
+    Assignment,
+    Expression,
+    Label,
+    Break,
+    Goto,
+    Do,
+    While,
+    Repeat,
+    If,
+    NumericFor,
+    GenericFor,
+    FunctionDef,
+    LocalFunction,
+    LocalVariables,
+);
 
 /// Return statement
 #[derive(Debug, Clone)]
 pub struct ReturnStatement<'arena> {
-    pub expressions: Option<&'arena [Expression<'arena>]>,
+    pub expressions: Option<List<'arena, Expression<'arena>>>,
     pub span: Span,
 }
 
-impl Node for ReturnStatement<'_> {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
+impl_node_struct!(ReturnStatement<'arena>);
 
 /// ElseIf clause for if statements
 #[derive(Debug, Clone)]
@@ -176,41 +191,29 @@ pub struct ElseIfClause<'arena> {
     pub span: Span,
 }
 
-impl Node for ElseIfClause<'_> {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
+impl_node_struct!(ElseIfClause<'arena>);
 
 /// Function name (can be dotted with optional method)
 #[derive(Debug, Clone)]
 pub struct FunctionName<'arena> {
     pub base: &'arena str,
-    pub fields: &'arena [&'arena str],
+    pub fields: StrList<'arena>,
     pub method: Option<&'arena str>,
     pub span: Span,
 }
 
-impl Node for FunctionName<'_> {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
+impl_node_struct!(FunctionName<'arena>);
 
 /// Function body
 #[derive(Debug, Clone)]
 pub struct FunctionBody<'arena> {
-    pub parameters: &'arena [&'arena str],
+    pub parameters: StrList<'arena>,
     pub is_vararg: bool,
     pub body: &'arena Block<'arena>,
     pub span: Span,
 }
 
-impl Node for FunctionBody<'_> {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
+impl_node_struct!(FunctionBody<'arena>);
 
 /// Variable name with optional attribute
 #[derive(Debug, Clone)]
@@ -220,11 +223,7 @@ pub struct AttributedName<'arena> {
     pub span: Span,
 }
 
-impl Node for AttributedName<'_> {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
+impl_node_struct!(AttributedName<'arena>);
 
 /// Variables (lvalues)
 #[derive(Debug, Clone)]
@@ -247,15 +246,7 @@ pub enum Variable<'arena> {
     },
 }
 
-impl Node for Variable<'_> {
-    fn span(&self) -> Span {
-        match self {
-            Variable::Identifier { span, .. } => *span,
-            Variable::Index { span, .. } => *span,
-            Variable::Field { span, .. } => *span,
-        }
-    }
-}
+impl_node_enum_with_span!(Variable<'arena>, Identifier, Index, Field);
 
 /// Expressions
 #[derive(Debug, Clone)]
@@ -287,7 +278,7 @@ pub enum Expression<'arena> {
     FunctionCall {
         function: &'arena Expression<'arena>,
         method: Option<&'arena str>,
-        arguments: &'arena [Expression<'arena>],
+        arguments: List<'arena, Expression<'arena>>,
         span: Span,
     },
 
@@ -308,7 +299,7 @@ pub enum Expression<'arena> {
 
     /// Table constructor
     Table {
-        fields: &'arena [TableField<'arena>],
+        fields: List<'arena, TableField<'arena>>,
         span: Span,
     },
 
@@ -336,24 +327,21 @@ impl<'arena> Expression<'arena> {
     }
 }
 
-impl Node for Expression<'_> {
-    fn span(&self) -> Span {
-        match self {
-            Expression::Nil { span } => *span,
-            Expression::Boolean { span, .. } => *span,
-            Expression::Number { span, .. } => *span,
-            Expression::String { span, .. } => *span,
-            Expression::Variable { span, .. } => *span,
-            Expression::FunctionCall { span, .. } => *span,
-            Expression::BinaryOp { span, .. } => *span,
-            Expression::UnaryOp { span, .. } => *span,
-            Expression::Table { span, .. } => *span,
-            Expression::Function { span, .. } => *span,
-            Expression::Varargs { span } => *span,
-            Expression::Parenthesized { span, .. } => *span,
-        }
-    }
-}
+impl_node_enum_with_span!(
+    Expression<'arena>,
+    Nil,
+    Boolean,
+    Number,
+    String,
+    Variable,
+    FunctionCall,
+    BinaryOp,
+    UnaryOp,
+    Table,
+    Function,
+    Varargs,
+    Parenthesized,
+);
 
 /// Table field
 #[derive(Debug, Clone)]
@@ -379,15 +367,7 @@ pub enum TableField<'arena> {
     },
 }
 
-impl Node for TableField<'_> {
-    fn span(&self) -> Span {
-        match self {
-            TableField::Index { span, .. } => *span,
-            TableField::Named { span, .. } => *span,
-            TableField::List { span, .. } => *span,
-        }
-    }
-}
+impl_node_enum_with_span!(TableField<'arena>, Index, Named, List);
 
 /// AST builder for convenient construction with arena allocation
 pub struct AstBuilder<'arena> {
@@ -400,7 +380,7 @@ impl<'arena> AstBuilder<'arena> {
     }
 
     /// Allocate a slice in the arena
-    pub fn alloc_slice<T>(&self, items: &[T]) -> &'arena [T]
+    pub fn alloc_slice<T>(&self, items: &[T]) -> List<'arena, T>
     where
         T: Clone,
     {
