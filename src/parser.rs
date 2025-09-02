@@ -823,15 +823,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
         let block = self.parse_block();
 
-        if !self.check(&TokenType::End) {
-            let span = self.current_span();
-            self.errors.push(ParseError::UnexpectedToken {
-                expected: "'end'".to_string(),
-                found: "".to_string(),
-                span,
-            });
+        if !self.expect(&TokenType::End, "'end'") {
+            return None;
         }
-        let end_span = self.advance().span; // consume 'end'
+        let end_span = self.previous_span; // consumed 'end'
 
         let span = Span::new(start_span.start, end_span.end);
 
@@ -909,7 +904,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
 
         let body = self.parse_block();
 
-        let end_span = self.previous_span; // consumed 'end' if present
+        if !self.expect(&TokenType::End, "'end'") {
+            return None;
+        }
+        let end_span = self.previous_span; // consumed 'end'
 
         let span = Span::new(start_span.start, end_span.end);
 
@@ -985,7 +983,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             None
         };
 
-        let end_span = self.previous_span; // consumed 'end' if present
+        if !self.expect(&TokenType::End, "'end'") {
+            return None;
+        }
+        let end_span = self.previous_span; // consumed 'end'
 
         let span = Span::new(start_span.start, end_span.end);
 

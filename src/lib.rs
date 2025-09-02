@@ -27,6 +27,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 /// to safely manage the self-referential relationship between the input string,
 /// the arena allocator, and the parsed AST nodes.
 #[self_referencing]
+#[derive(Debug)]
 pub struct Ast {
     /// The input string, which owns the string slices referenced by AST nodes.
     input: String,
