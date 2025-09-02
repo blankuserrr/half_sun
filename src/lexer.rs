@@ -570,8 +570,7 @@ impl<'a> Lexer<'a> {
             // Parse optional exponent part
             if let Some(ch) = self.peek_char() {
                 if ch == 'e' || ch == 'E' {
-                    let save_offset = self.current_offset;
-                    let save_position = self.position;
+                    let (save_offset, save_position, save_chars) = self.snapshot();
 
                     self.advance(); // consume 'e' or 'E'
 
@@ -585,7 +584,7 @@ impl<'a> Lexer<'a> {
                     // Exponent digits are required
                     if !self.consume_digits() {
                         // No digits after exponent, backtrack
-                        self.reset_to_offset(save_offset, save_position);
+                        self.restore(save_offset, save_position, save_chars);
                     }
                 }
             }
@@ -821,8 +820,7 @@ impl<'a> Lexer<'a> {
     /// Returns true if matched, false otherwise
     /// If false, resets position to before the ']'
     fn try_match_closing_bracket(&mut self, expected_level: usize) -> bool {
-        let save_offset = self.current_offset;
-        let save_position = self.position;
+        let (save_offset, save_position, save_chars) = self.snapshot();
 
         // Consume the ']'
         let consumed = self.advance();
@@ -842,24 +840,22 @@ impl<'a> Lexer<'a> {
             self.advance(); // consume final ']'
             true
         } else {
-            // Reset position AND chars iterator
-            self.reset_to_offset(save_offset, save_position);
+            // Restore from saved snapshot
+            self.restore(save_offset, save_position, save_chars);
             false
         }
     }
 
-    /// Reset lexer state to a specific offset and position
-    fn reset_to_offset(&mut self, offset: usize, position: Position) {
+    /// Take a lightweight snapshot of current iterator state
+    fn snapshot(&self) -> (usize, Position, Peekable<Chars<'a>>) {
+        (self.current_offset, self.position, self.chars.clone())
+    }
+
+    /// Restore lexer state from a snapshot without slicing/allocating
+    fn restore(&mut self, offset: usize, position: Position, chars: Peekable<Chars<'a>>) {
         self.current_offset = offset;
         self.position = position;
-        // Reconstruct the chars iterator from the correct position
-        // Make sure we don't go beyond the input bounds
-        if offset <= self.input.len() {
-            self.chars = self.input[offset..].chars().peekable();
-        } else {
-            // If offset is beyond bounds, create an empty iterator
-            self.chars = "".chars().peekable();
-        }
+        self.chars = chars;
     }
 }
 
