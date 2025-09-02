@@ -49,14 +49,20 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
     }
 
     fn skip_trivia(&mut self) {
-        while let Some(Ok(token)) = self.peek() {
-            match token.token_type {
-                TokenType::Whitespace(_)
-                | TokenType::LineComment(_)
-                | TokenType::BlockComment(_) => {
-                    self.advance();
-                }
-                _ => break,
+        loop {
+            if matches!(
+                self.peek(),
+                Some(Ok(Token {
+                    token_type:
+                        TokenType::Whitespace(_)
+                            | TokenType::LineComment(_)
+                            | TokenType::BlockComment(_),
+                    ..
+                }))
+            ) {
+                self.advance();
+            } else {
+                break;
             }
         }
     }
@@ -1752,8 +1758,7 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                 | Some(TokenType::Until)
                 | Some(TokenType::Return)
                 | Some(TokenType::Eof)
-                | None
-        )
+        ) || current_token.is_none()
     }
 
     fn synchronize(&mut self) {

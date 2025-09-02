@@ -202,7 +202,7 @@ impl<'a> Lexer<'a> {
                     }
                     '~' => {
                         self.advance();
-                        if self.peek_char() == Some('=') {
+                        if matches!(self.peek_char(), Some('=')) {
                             self.advance();
                             TokenType::Ne
                         } else {
@@ -228,7 +228,7 @@ impl<'a> Lexer<'a> {
                     '[' => {
                         self.advance();
                         // Check for long string/comment
-                        if self.peek_char() == Some('[') || self.peek_char() == Some('=') {
+                        if matches!(self.peek_char(), Some('[') | Some('=')) {
                             return self.read_long_bracket_content(start_pos, start_offset);
                         }
                         TokenType::LeftBracket
@@ -247,7 +247,7 @@ impl<'a> Lexer<'a> {
                     }
                     ':' => {
                         self.advance();
-                        if self.peek_char() == Some(':') {
+                        if matches!(self.peek_char(), Some(':')) {
                             self.advance();
                             TokenType::DoubleColon
                         } else {
@@ -256,7 +256,7 @@ impl<'a> Lexer<'a> {
                     }
                     '=' => {
                         self.advance();
-                        if self.peek_char() == Some('=') {
+                        if matches!(self.peek_char(), Some('=')) {
                             self.advance();
                             TokenType::Eq
                         } else {
@@ -293,7 +293,7 @@ impl<'a> Lexer<'a> {
                     }
                     '/' => {
                         self.advance();
-                        if self.peek_char() == Some('/') {
+                        if matches!(self.peek_char(), Some('/')) {
                             self.advance();
                             TokenType::DoubleSlash
                         } else {
@@ -305,7 +305,7 @@ impl<'a> Lexer<'a> {
                         match self.peek_char() {
                             Some('.') => {
                                 self.advance();
-                                if self.peek_char() == Some('.') {
+                                if matches!(self.peek_char(), Some('.')) {
                                     self.advance();
                                     TokenType::Ellipsis
                                 } else {
@@ -437,7 +437,7 @@ impl<'a> Lexer<'a> {
                         'u' => {
                             // \u{XXX} Unicode escape (Lua 5.4)
                             self.advance(); // consume 'u'
-                            if self.peek_char() == Some('{') {
+                            if matches!(self.peek_char(), Some('{')) {
                                 self.advance(); // consume '{'
                                 let mut hex_digits = 0;
 
@@ -470,7 +470,7 @@ impl<'a> Lexer<'a> {
                                     });
                                 }
 
-                                if self.peek_char() == Some('}') {
+                                if matches!(self.peek_char(), Some('}')) {
                                     self.advance(); // consume '}'
                                 } else {
                                     return Err(LexError::InvalidEscape {
@@ -559,7 +559,7 @@ impl<'a> Lexer<'a> {
             self.consume_digits();
 
             // Parse optional decimal part
-            if self.peek_char() == Some('.') {
+            if matches!(self.peek_char(), Some('.')) {
                 let remainder = &self.input[self.current_offset..];
                 if remainder.len() > 1 && remainder.as_bytes()[1].is_ascii_digit() {
                     self.advance(); // consume '.'
@@ -625,12 +625,8 @@ impl<'a> Lexer<'a> {
         start_pos: Position,
         start_offset: usize,
     ) -> LexResult<Token<'a>> {
-        while let Some(ch) = self.peek_char() {
-            if ch.is_alphanumeric() || ch == '_' {
-                self.advance();
-            } else {
-                break;
-            }
+        while matches!(self.peek_char(), Some(ch) if ch.is_alphanumeric() || ch == '_') {
+            self.advance();
         }
 
         let text = &self.input[start_offset..self.current_offset];
@@ -809,7 +805,7 @@ impl<'a> Lexer<'a> {
         }
 
         // Must be followed by '[' to be a valid long bracket
-        if self.peek_char() == Some('[') {
+        if matches!(self.peek_char(), Some('[')) {
             Ok(Some(level))
         } else {
             Ok(None)
