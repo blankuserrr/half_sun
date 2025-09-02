@@ -61,6 +61,43 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
         }
     }
 
+    // === Error and token helpers ===
+    fn found_token_description(&mut self) -> String {
+        self.peek()
+            .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
+            .unwrap_or_else(|| "EOF".to_string())
+    }
+
+    fn push_unexpected(&mut self, expected: &str) {
+        let span = self.current_span();
+        let found = self.found_token_description();
+        self.errors.push(ParseError::UnexpectedToken {
+            expected: expected.to_string(),
+            found,
+            span,
+        });
+    }
+
+    fn push_invalid(&mut self, message: impl Into<String>) {
+        let span = self.current_span();
+        self.errors.push(ParseError::InvalidSyntax {
+            message: message.into(),
+            span,
+        });
+    }
+
+    /// Expect a specific token kind (by discriminant). If present, consumes it and returns true.
+    /// Otherwise, reports an UnexpectedToken and returns false.
+    fn expect(&mut self, token_type: &TokenType, expected: &str) -> bool {
+        if self.check(token_type) {
+            self.advance();
+            true
+        } else {
+            self.push_unexpected(expected);
+            false
+        }
+    }
+
     /// Parse a block
     fn parse_block(&mut self) -> &'arena Block<'arena> {
         let start_span = self.current_span();
@@ -352,73 +389,50 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             _ => {
                 // At this point, it must be an assignment or a function call.
                 // Both start with a prefix expression.
-
                 if let Some(expr) = self.try_parse_prefix_expression() {
-                    // This is tricky without backtracking. We can peek ahead.
-                    let is_assignment =
-                        self.check(&TokenType::Assign) || self.check(&TokenType::Comma);
-
-                    if is_assignment {
-                        // It's an assignment
-                        // We need to re-parse the prefix expressions as variables
-                        let mut variables = Vec::new();
-                        if let Expression::Variable { var, .. } = expr {
-                            variables.push(var);
-                        } else {
-                            self.errors.push(ParseError::InvalidSyntax {
-                                message: "Invalid left-hand side of assignment".to_string(),
-                                span: expr.span(),
-                            });
-                            return None;
-                        }
-
-                        while self.check(&TokenType::Comma) {
-                            self.advance(); // consume comma
-
-                            if let Some(next_expr) = self.try_parse_prefix_expression() {
-                                if let Expression::Variable { var, .. } = next_expr {
+                    match expr {
+                        Expression::Variable { .. } => {
+                            // A variable can start an assignment if followed by '=' or ',' (varlist)
+                            if self.check(&TokenType::Assign) || self.check(&TokenType::Comma) {
+                                let mut variables = Vec::new();
+                                if let Expression::Variable { var, .. } = expr {
                                     variables.push(var);
-                                } else {
-                                    self.errors.push(ParseError::InvalidSyntax {
-                                        message: "Invalid left-hand side of assignment".to_string(),
-                                        span: next_expr.span(),
-                                    });
-                                    return None;
                                 }
+                                while self.check(&TokenType::Comma) {
+                                    self.advance();
+                                    if let Some(next_expr) = self.try_parse_prefix_expression() {
+                                        if let Expression::Variable { var, .. } = next_expr {
+                                            variables.push(var);
+                                        } else {
+                                            self.push_invalid("Invalid left-hand side of assignment");
+                                            return None;
+                                        }
+                                    } else {
+                                        self.push_invalid("Expected variable after ','");
+                                        return None;
+                                    }
+                                }
+                                return self.parse_assignment_statement(variables);
                             } else {
-                                let span = self.current_span();
-                                self.errors.push(ParseError::InvalidSyntax {
-                                    message: "Expected variable after ','".to_string(),
-                                    span,
-                                });
+                                // Standalone variable as a statement is invalid in Lua
+                                self.push_unexpected("'=' or function call arguments");
                                 return None;
                             }
                         }
-
-                        return self.parse_assignment_statement(variables);
-                    }
-
-                    // Check if it's a function call statement
-                    if let Expression::FunctionCall { .. } = expr {
-                        let span = expr.span();
-                        return Some(Statement::Expression {
-                            expression: self.builder.alloc(expr),
-                            span,
-                        });
+                        Expression::FunctionCall { .. } => {
+                            let span = expr.span();
+                            return Some(Statement::Expression {
+                                expression: self.builder.alloc(expr),
+                                span,
+                            });
+                        }
+                        _ => {
+                            self.push_unexpected("assignment or function call");
+                            return None;
+                        }
                     }
                 }
-
-                // If it's neither, this is a syntax error
-                let found = self
-                    .peek()
-                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
-                    .unwrap_or_else(|| "EOF".to_string());
-                let span = self.current_span();
-                self.errors.push(ParseError::UnexpectedToken {
-                    expected: "assignment or function call".to_string(),
-                    found,
-                    span,
-                });
+                self.push_unexpected("assignment or function call");
                 return None;
             }
         }
@@ -531,16 +545,7 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
         let start_span = self.current_span();
 
         if !self.check(&TokenType::LeftParen) {
-            let found = self
-                .peek()
-                .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
-                .unwrap_or_else(|| "EOF".to_string());
-            let span = self.current_span();
-            self.errors.push(ParseError::UnexpectedToken {
-                expected: "'('".to_string(),
-                found,
-                span,
-            });
+            self.push_unexpected("'('");
             // Recovery: assume no parameters and parse a body anyway
             let body = self.parse_block();
             if self.check(&TokenType::End) {
@@ -591,26 +596,14 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             }
         }
 
-        if !self.check(&TokenType::RightParen) {
-            let span = self.current_span();
-            self.errors.push(ParseError::InvalidSyntax {
-                message: "Expected ')' after function parameters".to_string(),
-                span,
-            });
-        } else {
-            self.advance(); // consume ')'
+        if !self.expect(&TokenType::RightParen, "')' after function parameters") {
+            // proceed
         }
 
         let body = self.parse_block();
 
-        if !self.check(&TokenType::End) {
-            let span = self.current_span();
-            self.errors.push(ParseError::InvalidSyntax {
-                message: "Expected 'end' after function body".to_string(),
-                span,
-            });
-        } else {
-            self.advance(); // consume 'end'
+        if !self.expect(&TokenType::End, "'end' after function body") {
+            // proceed
         }
 
         let span = Span::new(start_span.start, self.previous_span.end);
@@ -714,37 +707,16 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                 None
             };
 
-            if !self.check(&TokenType::Do) {
-                let span = self.current_span();
-                let found = self
-                    .peek()
-                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
-                    .unwrap_or_else(|| "EOF".to_string());
-                self.errors.push(ParseError::UnexpectedToken {
-                    expected: "'do'".to_string(),
-                    found,
-                    span,
-                });
+            if !self.expect(&TokenType::Do, "'do'") {
                 return None;
             }
-            self.advance(); // consume 'do'
 
             let body = self.parse_block();
 
-            if !self.check(&TokenType::End) {
-                let span = self.current_span();
-                let found = self
-                    .peek()
-                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
-                    .unwrap_or_else(|| "EOF".to_string());
-                self.errors.push(ParseError::UnexpectedToken {
-                    expected: "'end'".to_string(),
-                    found,
-                    span,
-                });
+            if !self.expect(&TokenType::End, "'end'") {
                 return None;
             }
-            let end_span = self.advance().span; // consume 'end'
+            let end_span = self.previous_span; // consumed 'end'
 
             let span = Span::new(start_span.start, end_span.end);
 
@@ -925,32 +897,13 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             return None;
         };
 
-        if !self.check(&TokenType::Do) {
-            let span = self.current_span();
-            let found = self
-                .peek()
-                .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
-                .unwrap_or_else(|| "EOF".to_string());
-            self.errors.push(ParseError::UnexpectedToken {
-                expected: "'do'".to_string(),
-                found,
-                span,
-            });
+        if !self.expect(&TokenType::Do, "'do'") {
             return None;
         }
-        self.advance(); // consume 'do'
 
         let body = self.parse_block();
 
-        if !self.check(&TokenType::End) {
-            let span = self.current_span();
-            self.errors.push(ParseError::UnexpectedToken {
-                expected: "'end'".to_string(),
-                found: "".to_string(),
-                span,
-            });
-        }
-        let end_span = self.advance().span; // consume 'end'
+        let end_span = self.previous_span; // consumed 'end' if present
 
         let span = Span::new(start_span.start, end_span.end);
 
@@ -980,20 +933,9 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             return None;
         };
 
-        if !self.check(&TokenType::Then) {
-            let span = self.current_span();
-            let found = self
-                .peek()
-                .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
-                .unwrap_or_else(|| "EOF".to_string());
-            self.errors.push(ParseError::UnexpectedToken {
-                expected: "'then'".to_string(),
-                found,
-                span,
-            });
+        if !self.expect(&TokenType::Then, "'then'") {
             return None;
         }
-        self.advance(); // consume 'then'
 
         let then_block = self.parse_block();
 
@@ -1016,20 +958,9 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
                 return None;
             };
 
-            if !self.check(&TokenType::Then) {
-                let span = self.current_span();
-                let found = self
-                    .peek()
-                    .map(|t| format!("{:?}", t.as_ref().unwrap().token_type))
-                    .unwrap_or_else(|| "EOF".to_string());
-                self.errors.push(ParseError::UnexpectedToken {
-                    expected: "'then'".to_string(),
-                    found,
-                    span,
-                });
+            if !self.expect(&TokenType::Then, "'then'") {
                 return None;
             }
-            self.advance(); // consume 'then'
 
             let elseif_block = self.parse_block();
             let elseif_span = Span::new(elseif_start_span.start, self.previous_span.end);
@@ -1048,15 +979,7 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             None
         };
 
-        if !self.check(&TokenType::End) {
-            let span = self.current_span();
-            self.errors.push(ParseError::UnexpectedToken {
-                expected: "'end'".to_string(),
-                found: "".to_string(),
-                span,
-            });
-        }
-        let end_span = self.advance().span; // consume 'end'
+        let end_span = self.previous_span; // consumed 'end' if present
 
         let span = Span::new(start_span.start, end_span.end);
 
@@ -1387,15 +1310,10 @@ impl<'arena, 'input: 'arena> Parser<'arena, 'input> {
             }
         }
 
-        if !self.check(&TokenType::RightBrace) {
-            let span = self.current_span();
-            self.errors.push(ParseError::InvalidSyntax {
-                message: "Expected '}' to close table constructor".to_string(),
-                span,
-            });
+        if !self.expect(&TokenType::RightBrace, "'}' to close table constructor") {
             return None;
         }
-        let end_span = self.advance().span; // consume '}'
+        let end_span = self.previous_span; // already consumed '}'
         let span = Span::new(start_span.start, end_span.end);
 
         Some(Expression::Table {
